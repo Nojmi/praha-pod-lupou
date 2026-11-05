@@ -7,12 +7,12 @@ skóre místa s profily a váhami (rodina, senior, dojíždějící, vlastní), 
 Aplikace je jedna samostatná HTML stránka (`index.html`, asi 10 MB), všechna data jsou vložená uvnitř.
 
 ## Rychlý start
-    python3 build_app.py      # složí index.html z src/template.html a data/data7.json
+    python3 build_app.py      # složí index.html z src/template.html a data/data8.json
     # pak otevři index.html v prohlížeči (3D potřebuje internet kvůli three.js z CDN)
 
 ## Struktura
 - `src/template.html` – celá aplikace (2D canvas + 3D three.js), místo dat je `/*DATA*/`
-- `data/data7.json` – hotová data (síť MHD, silnice, voda, zeleň, mřížky dostupnosti, graf cest, budovy, terén)
+- `data/data8.json` – hotová data (síť MHD, silnice, voda, zeleň, mřížky dostupnosti, graf cest, budovy, terén)
 - `data/elevation.json` – výšky terénu (mřížka 600 m, Copernicus DEM přes Open-Meteo)
 - `pipeline/` – skripty, kterými data vznikla (pořadí níže)
 - `tools/dem_praha.py` – stažení výšek terénu
@@ -27,7 +27,8 @@ Prahy (BBBike, formát PBF). Skripty mají cesty napevno, před spuštěním je 
 4. `build4.py` – mřížka 100 m s časy (dostupnost, vybavenost)
 5. `graph.py` – pěší graf pro docházkové zóny
 6. `bld.py`, `enc.py` – budovy a jejich výšky (kódování pro 3D)
-7. data7.json = výstup 1–6 + `dem` z `data/elevation.json`
+7. `amen2.py` (střední a vysoké školy, hřiště, sportoviště, cyklostezky z OSM) a `extend.py` (doplní vrstvy do dat)
+8. data8.json = výstup 1–7 + `dem` z `data/elevation.json`
 
 ## Souřadnice
 Rovnoběžníkové zobrazení kolem 50,08 N, 14,42 E v metrech:
