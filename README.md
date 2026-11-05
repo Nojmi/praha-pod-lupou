@@ -29,6 +29,7 @@ Prahy (BBBike, formát PBF). Skripty mají cesty napevno, před spuštěním je 
 6. `bld.py`, `enc.py` – budovy a jejich výšky (kódování pro 3D)
 7. `amen2.py` (střední a vysoké školy, hřiště, sportoviště, cyklostezky z OSM) a `extend.py` (doplní vrstvy do dat)
 8. `crime.py` (kriminalita z Policie ČR, `data/kriminalita_praha_bunky_mesice.csv`, vrstva `krim`)
+9. `mc.py` (městské části: hranice IPR Praha `data/mestske_casti/`, sčítání 2021 `data/sldb2021_mestske_casti.csv`, vrstva mřížky `mc` a `D.mc`; spouštět z `pipeline/`, vyžaduje `pyshp pyproj shapely`)
 9. data8.json = výstup 1–7 + `dem` z `data/elevation.json`
 
 ## Souřadnice
@@ -46,3 +47,11 @@ Zdroj: Policie ČR, kriminalita.policie.gov.cz (lze šířit, uvést zdroj). Jen
 
 ## Licence dat
 © přispěvatelé OpenStreetMap (ODbL), PID (otevřená data), Copernicus DEM.
+
+## Městské části a obyvatelstvo
+
+Hranice 57 městských částí jsou z otevřených dat IPR Praha (Geoportál Praha, vrstva `MAP_CUR_MAP_MESTSKECASTI_P`, S-JTSK, převod na WGS 84 v `mc.py`). Počty obyvatel, věk 0 až 14 / 15 až 64 / 65+, průměrné stáří domů a rodinné/bytové domy jsou ze sčítání lidu 2021 (ČSÚ, otevřená data, výběr 57 řádků v `data/sldb2021_mestske_casti.csv`, součet 1 301 432 obyvatel).
+
+Vrstvy v aplikaci: kriminalita na 1 000 obyvatel, hustota, podíl dětí, podíl seniorů, stáří domů, podíl rodinných domů. Jsou po městských částech, ne po ulicích, a do skóre nevstupují. Skóre dál používá kriminalitu na km². Kriminalita na obyvatele je silně zkreslená v centru (návštěvníci) a u malých částí (málo obyvatel); asi 12 % činů z dat policie leží mimo hranice městských částí (zkreslené polohy) a do součtu nejsou započtené.
+
+Hranice ZSJ (základních sídelních jednotek) nejsou volně dostupné v otevřených datech Prahy, proto zatím chybí jemnější rozlišení.
