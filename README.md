@@ -28,11 +28,15 @@ Prahy (BBBike, formát PBF). Skripty mají cesty napevno, před spuštěním je 
 5. `graph.py` – pěší graf pro docházkové zóny
 6. `bld.py`, `enc.py` – budovy a jejich výšky (kódování pro 3D)
 7. `amen2.py` (střední a vysoké školy, hřiště, sportoviště, cyklostezky z OSM) a `extend.py` (doplní vrstvy do dat)
-8. data8.json = výstup 1–7 + `dem` z `data/elevation.json`
+8. `crime.py` (kriminalita z Policie ČR, `data/kriminalita_praha_bunky_mesice.csv`, vrstva `krim`)
+9. data8.json = výstup 1–7 + `dem` z `data/elevation.json`
 
 ## Souřadnice
 Rovnoběžníkové zobrazení kolem 50,08 N, 14,42 E v metrech:
 x = (lon − 14,42)·cos(50,08°)·111320, y = (lat − 50,08)·110574.
+
+## Kriminalita
+Zdroj: Policie ČR, kriminalita.policie.gov.cz (lze šířit, uvést zdroj). Jen násilná, vloupání, krádeže a podvody (váhy 3, 2, 1, 0,5), měsíce 202511 až 202609 (poslední měsíc je neúplný). Poloha je od policie zkreslená na střed Voroného buňky. Hodnota je pořadí oblasti (percentil) podle počtu na km², ne na obyvatele. Zadání: `data/kriminalita_zadani.md`.
 
 ## Známá omezení
 - OSM výřez končí na 49,963–50,145 N, takže na severu a jihu Prahy chybí silnice, budovy a vybavenost.
