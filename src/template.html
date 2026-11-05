@@ -1,0 +1,961 @@
+<title>Praha pod lupou</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: plátno s mapou vlevo (posun, zoom, hledání), vpravo panel se statistikou sítě a detailem vybrané zastávky. Tokeny z designového systému Praha pod lupou. */
+:root{
+  --font:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ink:#101828;--ink-2:#475467;--ink-3:#5b6577;--line:#e4e7ec;--line-strong:#d0d5dd;--surface:#f5f6f9;--card:#fff;--seg-bg:#f2f4f7;
+  --accent:#3d3bf3;--accent-deep:#2b2ad1;--accent-tint:#ececfe;--accent-track:#e0e0fc;
+  --muted-bg:#eef0f3;--muted-fg:#4b5565;--con-bg:#ffebd6;--con-fg:#9a4a06;
+  --r-sm:12px;--r-md:16px;--r-lg:20px;--r-xl:24px;--r-2xl:28px;--r-pill:999px;
+  --shadow-card:0 1px 2px rgba(16,24,40,.04),0 4px 16px rgba(16,24,40,.05);
+  --shadow-float:0 2px 4px rgba(16,24,40,.06),0 12px 32px rgba(16,24,40,.12);
+  --focus:3px solid var(--accent);--panel-w:380px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+*:focus-visible{outline:var(--focus);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+html,body{height:100%}
+body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.5;font-weight:500;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column}
+button,input{font-family:var(--font)}
+.top{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;min-height:64px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.01em}
+.sub{font-size:13px;color:var(--ink-3);font-weight:600}
+.ribbon{display:flex;gap:10px;align-items:flex-start;background:var(--muted-bg);color:var(--muted-fg);border-radius:var(--r-sm);padding:8px 14px;font-size:13px;font-weight:600;margin-bottom:12px}
+.ribbon svg{flex:none;margin-top:2px}
+.app{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) var(--panel-w);gap:16px;padding-bottom:16px}
+.mapwrap{position:relative;min-width:0;min-height:0;border-radius:var(--r-2xl);overflow:hidden;box-shadow:var(--shadow-card);background:#e8ebf0}
+#cv{position:absolute;inset:0;display:block;cursor:grab;touch-action:none;outline-offset:-4px}
+#cv.drag{cursor:grabbing}
+.float{position:absolute;background:#fff;border-radius:var(--r-xl);box-shadow:var(--shadow-float);padding:14px 16px}
+#layersCard{left:16px;top:76px;width:252px;max-height:calc(100% - 92px);overflow-y:auto}
+.rd{display:flex;align-items:center;gap:10px;min-height:36px;cursor:pointer;font-weight:600;font-size:14px}
+.rd input{-webkit-appearance:none;appearance:none;width:20px;height:20px;margin:0;flex:none;border:2px solid var(--line-strong);border-radius:50%;background:#fff;display:grid;place-content:center}
+.rd input::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent);transform:scale(0)}
+.rd input:checked{border-color:var(--accent)}
+.rd input:checked::before{transform:scale(1)}
+.rd input:focus-visible{outline:var(--focus);outline-offset:2px}
+.sub2{font-size:13px;font-weight:700;color:var(--ink-3);margin:8px 0 2px}
+.dot{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-1px;margin-right:6px}
+.hb{height:10px;border-radius:5px;background:var(--seg-bg);position:relative;min-width:60px}.hb b{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+#searchBox{left:16px;top:16px;width:min(340px,calc(100% - 140px));padding:0;border-radius:var(--r-md)}
+#q{width:100%;height:48px;border:0;border-radius:var(--r-md);padding:0 16px 0 44px;font-size:15px;font-weight:600;background:transparent;color:var(--ink)}
+#searchBox svg{position:absolute;left:14px;top:14px;color:var(--ink-3)}
+#sug{list-style:none;margin:0;padding:6px;border-top:1px solid var(--line)}
+#sug[hidden]{display:none}
+#sug li button{display:flex;justify-content:space-between;gap:10px;width:100%;min-height:40px;align-items:center;text-align:left;border:0;background:transparent;border-radius:var(--r-sm);padding:6px 10px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer}
+#sug li button:hover,#sug li button:focus-visible{background:var(--accent-tint)}
+#sug small{color:var(--ink-3);font-weight:500;font-size:13px}
+#zoom{right:16px;top:16px;padding:6px;display:flex;flex-direction:column;gap:4px;border-radius:var(--r-lg)}
+#zoom button{width:44px;height:44px;border:0;border-radius:var(--r-sm);background:var(--seg-bg);color:var(--ink);font-size:20px;font-weight:700;cursor:pointer}
+#zoom button:hover{background:var(--accent-tint)}
+#tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;border-radius:var(--r-sm);padding:6px 10px;font-size:13px;font-weight:700;white-space:nowrap;transform:translate(12px,-34px);z-index:3}
+#tip small{font-weight:500;opacity:.8;margin-left:6px}
+.ov{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+.sw{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center;min-height:40px;cursor:pointer;font-weight:600;font-size:14px}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}
+.sw .trk{width:38px;height:22px;border-radius:var(--r-pill);background:var(--line-strong);position:relative;transition:background .15s}
+.sw .trk::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.25);transition:transform .15s}
+.sw input:checked+.trk{background:var(--accent)}
+.sw input:checked+.trk::after{transform:translateX(16px)}
+.sw input:focus-visible+.trk{outline:var(--focus);outline-offset:2px}
+.sw .nm{display:flex;align-items:center;gap:8px}
+.sw .sl{display:inline-block;width:22px;height:0;border-top-width:4px;border-top-style:solid;border-radius:2px}
+.sw em{font-style:normal;font-size:13px;color:var(--ink-3);font-variant-numeric:tabular-nums;font-weight:600}
+.panel{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding:2px}
+.card{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:20px}
+.card h2{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:-.01em}
+.card h3{margin:0;font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.cap{font-size:13px;color:var(--ink-3);font-weight:500;margin:0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:13px;font-weight:700;color:var(--ink-3);text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
+td{padding:8px 6px;border-bottom:1px solid var(--line);font-weight:600;vertical-align:middle}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.bar{height:8px;border-radius:4px;background:var(--seg-bg);position:relative;min-width:24px}
+.bar b{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px 10px;border-radius:var(--r-pill);font-size:13px;font-weight:700;background:var(--accent-tint);color:var(--accent-deep)}
+.chip i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.btn{height:44px;padding:0 18px;border:0;border-radius:var(--r-md);background:var(--accent);color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+.tbl{overflow-x:auto}
+@media (max-width:900px){
+  html,body{height:auto}
+  .app{grid-template-columns:minmax(0,1fr)}
+  .mapwrap{height:72vh;min-height:460px}
+  .panel{overflow:visible}
+  #layersCard{width:208px;padding:10px 12px}
+}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:none;touch-action:none;outline-offset:-4px}
+#lab{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#lab[hidden]{display:none}
+#lab span{position:absolute;transform:translate(8px,-50%);font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 5px #fff}
+#busy{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:#fff;border-radius:var(--r-pill);box-shadow:var(--shadow-float);padding:8px 16px;font-size:13px;font-weight:700;z-index:4}
+#busy[hidden]{display:none}
+#searchBox{z-index:5}
+#modeCard{right:76px;top:16px;padding:4px;display:flex;gap:4px;border-radius:var(--r-pill)}
+#modeCard button{min-width:56px;height:40px;border:0;border-radius:var(--r-pill);background:transparent;color:var(--ink);font-weight:800;font-size:14px;cursor:pointer}
+#modeCard button[aria-pressed=true]{background:var(--accent);color:#fff}
+.only3d{display:none!important}
+body.m3d .only3d{display:block!important}
+#zoom button.only3d{font-size:15px}
+@media (max-width:900px){#searchBox{width:min(340px,calc(100% - 250px))}}
+</style>
+
+<header class="top">
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="14" cy="14" r="9" fill="none" stroke="#3d3bf3" stroke-width="3.5"/><path d="M21 21l7 7" stroke="#3d3bf3" stroke-width="3.5" stroke-linecap="round"/><circle cx="14" cy="14" r="3" fill="#3d3bf3"/></svg>
+    <span>Praha pod lupou</span>
+  </div>
+  <span class="sub">kvalita bydlení v Praze: MHD, vybavenost, docházkové zóny, 2D a 3D</span>
+</header>
+<div class="ribbon" role="note">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <span>Zastávky, jejich spojení a hranice Prahy (tarifní pásmo P) jsou skutečná data PID. Trasy linek jsou skutečné tvary z GTFS (zjednodušené na cca 6 m). Řeka, silnice, zeleň, vybavenost a budovy jsou z OpenStreetMap (© přispěvatelé OpenStreetMap), na severu a jihu Prahy v pruzích chybí. Výšky budov znám u 62 % z OSM, zbytek je odhad. Terén: Copernicus DEM 90 m. Spoje za hodinu platí pro středu 7 až 19 h.</span>
+</div>
+
+<main class="app">
+  <section class="mapwrap" id="mw">
+    <canvas id="gl" tabindex="0" role="application" aria-label="3D mapa Prahy. Levé tlačítko posouvá, pravé otáčí, kolečko přibližuje. Šipky posouvají, plus a minus mění přiblížení."></canvas><div id="lab" hidden aria-hidden="true"></div><canvas id="cv" tabindex="0" role="application" aria-label="Mapa MHD v Praze. Táhnutím posouváte, kolečkem nebo tlačítky přibližujete, šipky posouvají, plus a minus mění přiblížení."></canvas>
+    <div class="float" id="searchBox">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" type="search" autocomplete="off" placeholder="Zastávka nebo linka" aria-label="Hledat zastávku nebo linku" aria-controls="sug">
+      <ul id="sug" hidden></ul>
+    </div>
+    <div class="float" id="layersCard"><p class="ov">Vrstvy</p><div id="layers"></div></div>
+    <div class="float" id="zoom"><button type="button" id="zin" aria-label="Přiblížit">+</button><button type="button" id="zout" aria-label="Oddálit">−</button><button type="button" id="zfit" aria-label="Celá Praha" style="font-size:13px">Praha</button><button type="button" id="b3t" class="only3d" aria-label="Přepnout sklon pohledu" style="font-size:13px">Sklon</button><button type="button" id="b3l" class="only3d" aria-label="Otočit doleva">↶</button><button type="button" id="b3r" class="only3d" aria-label="Otočit doprava">↷</button><button type="button" id="b3n" class="only3d" aria-label="Sever nahoře" style="font-size:13px">S</button></div><div class="float" id="modeCard" role="group" aria-label="Režim zobrazení"><button type="button" id="m2" aria-pressed="true">2D</button><button type="button" id="m3" aria-pressed="false">3D</button></div><div id="busy" hidden></div>
+    <div id="tip" hidden></div>
+  </section>
+  <aside class="panel" id="panel" aria-live="polite"></aside>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+'use strict';
+var D=/*DATA*/;
+var MODES=[
+  {key:'metro',bit:4,n:'Metro',c:'#00a562',dash:null},
+  {key:'tram',bit:2,n:'Tramvaj',c:'#3d3bf3',dash:null},
+  {key:'bus',bit:1,n:'Autobus',c:'#8b95a7',dash:null},
+  {key:'rail',bit:8,n:'Vlak (Esko)',c:'#101828',dash:[6,4]},
+  {key:'ferry',bit:48,n:'Přívoz a lanovka',c:'#0b7a8f',dash:null}
+];
+var METRO={A:'#00a562',B:'#f8b334',C:'#e31e24'};
+var NODES=D.nodes.map(function(n){return{x:n[0],y:n[1],name:n[2],mask:n[3],lines:n[4]||[],fr:n[5]||[],adj:[]};});
+var LINES=D.lines;LINES.forEach(function(l,i){l.i=i;l.len=0;l.stops=0;l.s=F32(l.s);l.s.forEach(function(a){for(var k=2;k<a.length;k+=2)l.len+=Math.hypot(a[k]-a[k-2],a[k+1]-a[k-1]);});});
+NODES.forEach(function(n){n.lines.forEach(function(i){LINES[i].stops++;});});
+var EDG=D.edges.map(function(e){return{i:e[0],j:e[1],m:e[2],w:e[3],line:e[4]};});
+EDG.forEach(function(e){NODES[e.i].adj.push(e);NODES[e.j].adj.push(e);});
+var RING=D.ring;
+function F32(a){return a.map(function(x){var f=Float32Array.from(x),x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(var k=0;k<f.length;k+=2){if(f[k]<x0)x0=f[k];if(f[k]>x1)x1=f[k];if(f[k+1]<y0)y0=f[k+1];if(f[k+1]>y1)y1=f[k+1];}f.bb=[x0,y0,x1,y1];return f;});}
+var ROADS={};Object.keys(D.roads).forEach(function(k){ROADS[k]=F32(D.roads[k]);});
+var RIV=F32(D.rivers),WATER=D.water.map(F32);
+var G=D.grid,GL={};Object.keys(G.layers).forEach(function(k){var b=atob(G.layers[k]),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);GL[k]=a;});
+var POI=D.poi,GREEN=D.green.map(function(p){var r=F32(p),b=r[0].bb;return{r:r,bb:b};});
+var HEAT=[
+ {k:'walk',g:'Doprava',t:'Čas k zastávce',kind:'t',d:'Pěšky k nejbližší zastávce MHD'},
+ {k:'freq',g:'Doprava',t:'Spojů za hodinu',kind:'f',d:'Odjezdy všech linek do 5 minut chůze, středa 7 až 19 h, oba směry'},
+ {k:'rapid',g:'Doprava',t:'Čas k metru či vlaku',kind:'t',d:'Pěšky k nejbližší stanici metra nebo vlaku'},
+ {k:'zelen',g:'Vybavenost',t:'Zeleň',kind:'t',d:'Pěšky k parku, lesu či louce nad 0,4 ha'},
+ {k:'ms',g:'Vybavenost',t:'Mateřská škola',kind:'t',d:'Pěšky k nejbližší školce'},
+ {k:'zs',g:'Vybavenost',t:'Škola',kind:'t',d:'Pěšky k nejbližší škole'},
+ {k:'obchod',g:'Vybavenost',t:'Obchod s potravinami',kind:'t',d:'Supermarket, večerka, zelenina, pekárna'},
+ {k:'lekar',g:'Vybavenost',t:'Lékař či poliklinika',kind:'t',d:'Ordinace, klinika, nemocnice'},
+ {k:'lekarna',g:'Vybavenost',t:'Lékárna',kind:'t',d:'Pěšky k nejbližší lékárně'}];
+var HM={};HEAT.forEach(function(h){HM[h.k]=h;});
+var BANDS=['Výborná','Dobrá','Průměrná','Slabá','Špatná'],BCOL=['#1a9e6e','#8cc96b','#f2d04a','#f29b4b','#d9534f'];
+var BTXT={t:['do 5 min','5 až 10 min','10 až 15 min','15 až 25 min','nad 25 min'],f:['30 a více','15 až 30','8 až 15','3 až 8','méně než 3']};
+var POIC={ms:{n:'Mateřská škola',c:'#c11574'},zs:{n:'Škola',c:'#b54708'},obchod:{n:'Obchod',c:'#0e9384'},lekar:{n:'Lékař',c:'#d92d20'},lekarna:{n:'Lékárna',c:'#039855'}};
+function band(h,v){if(h.kind==='f')return v>=30?0:v>=15?1:v>=8?2:v>=3?3:4;return v<=5?0:v<=10?1:v<=15?2:v<=25?3:4;}
+function hexRGB(s){return[parseInt(s.slice(1,3),16),parseInt(s.slice(3,5),16),parseInt(s.slice(5,7),16)];}
+var ISOB=[5,10,15,30],ISOC=['#b91c1c','#ea580c','#f59e0b','#fde68a'];
+function clearPin(){pin=null;iso=null;if(typeof setBsel==='function'&&bsel)setBsel(null);}
+function loadGraph(){
+  if(!window.DecompressionStream||!window.Blob){graphErr='Tento prohlížeč neumí rozbalit data sítě cest.';return;}
+  var bin=Uint8Array.from(atob(D.graph.b),function(c){return c.charCodeAt(0);}),n=D.graph.n,e=D.graph.e;D.graph.b=null;
+  new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer().then(function(buf){
+    var o=0,xy=new Int16Array(buf.slice(o,o+4*n));o+=4*n;
+    var da=new Uint8Array(buf.slice(o,o+e));o+=e;
+    var db=new Int16Array(buf.slice(o,o+2*e));o+=2*e;
+    var ln=new Uint16Array(buf.slice(o,o+2*e));
+    var EA=new Int32Array(e),EB=new Int32Array(e),a=0,deg=new Int32Array(n+1);
+    for(var i=0;i<e;i++){a+=da[i];EA[i]=a;EB[i]=a+db[i];deg[EA[i]]++;deg[EB[i]]++;}
+    var off=new Int32Array(n+1);for(i=0;i<n;i++)off[i+1]=off[i]+deg[i];
+    var pos=off.slice(0,n),adj=new Int32Array(2*e),aw=new Uint16Array(2*e);
+    for(i=0;i<e;i++){var p=pos[EA[i]]++;adj[p]=EB[i];aw[p]=ln[i];p=pos[EB[i]]++;adj[p]=EA[i];aw[p]=ln[i];}
+    var bk=new Map();
+    for(i=0;i<n;i++){var key=(Math.floor(xy[2*i]/100)+500)*2000+Math.floor(xy[2*i+1]/100)+500,l=bk.get(key);if(l)l.push(i);else bk.set(key,[i]);}
+    GR={n:n,e:e,xy:xy,EA:EA,EB:EB,EL:ln,off:off,adj:adj,aw:aw,bk:bk,hd:new Float32Array(2*e+64),hn:new Int32Array(2*e+64)};
+    function snap(x,y){var c=nearGraph(x,y,300);return c.length?{g:c[0][0],d:c[0][1]}:null;}
+    GR.stopSnap=NODES.map(function(nd){return snap(nd.x,nd.y);});
+    GR.poiSnap={};Object.keys(POI).forEach(function(k){GR.poiSnap[k]=POI[k].map(function(p){return snap(p[0],p[1]);});});
+    renderPanel();if(pin)computeIso();
+  }).catch(function(err){graphErr=String(err);renderPanel();});
+}
+function nearGraph(x,y,maxR){
+  var cx=Math.floor(x/100),cy=Math.floor(y/100),r=Math.ceil(maxR/100),out=[];
+  for(var i=cx-r;i<=cx+r;i++)for(var j=cy-r;j<=cy+r;j++){var l=GR.bk.get((i+500)*2000+j+500);if(!l)continue;
+    for(var k=0;k<l.length;k++){var g=l[k],d=Math.hypot(GR.xy[2*g]-x,GR.xy[2*g+1]-y);if(d<=maxR)out.push([g,d]);}}
+  out.sort(function(a,b){return a[1]-b[1];});return out;
+}
+function dijkstra(starts,maxD){
+  var n=GR.n,dist=new Float32Array(n).fill(Infinity),hd=GR.hd,hn=GR.hn,sz=0,off=GR.off,adj=GR.adj,aw=GR.aw;
+  function push(d,v){var i=sz++;while(i>0){var p=(i-1)>>1;if(hd[p]<=d)break;hd[i]=hd[p];hn[i]=hn[p];i=p;}hd[i]=d;hn[i]=v;}
+  starts.forEach(function(s){if(s[1]<dist[s[0]]){dist[s[0]]=s[1];push(s[1],s[0]);}});
+  while(sz>0){
+    var d=hd[0],v=hn[0];sz--;
+    if(sz>0){var ld=hd[sz],lv=hn[sz],i=0;for(;;){var c=2*i+1;if(c>=sz)break;if(c+1<sz&&hd[c+1]<hd[c])c++;if(hd[c]>=ld)break;hd[i]=hd[c];hn[i]=hn[c];i=c;}hd[i]=ld;hn[i]=lv;}
+    if(d>dist[v])continue;
+    for(var k=off[v];k<off[v+1];k++){var nd=d+aw[k];if(nd<=maxD&&nd<dist[adj[k]]){dist[adj[k]]=nd;push(nd,adj[k]);}}
+  }
+  return dist;
+}
+function boxBlur(a,w,h,r){
+  var t=new Float32Array(a.length),k=1/(2*r+1),x,y,s,i;
+  for(y=0;y<h;y++){s=0;var o=y*w;for(x=-r;x<=r;x++)s+=a[o+Math.min(w-1,Math.max(0,x))];for(x=0;x<w;x++){t[o+x]=s*k;s+=a[o+Math.min(w-1,x+r+1)]-a[o+Math.max(0,x-r)];}}
+  for(x=0;x<w;x++){s=0;for(y=-r;y<=r;y++)s+=t[Math.min(h-1,Math.max(0,y))*w+x];for(y=0;y<h;y++){a[y*w+x]=s*k;s+=t[Math.min(h-1,y+r+1)*w+x]-t[Math.max(0,y-r)*w+x];}}
+}
+function computeIso(){
+  if(!GR||!pin){return;}
+  var st=nearGraph(pin.x,pin.y,400);
+  if(!st.length){iso={none:true};renderPanel();draw();return;}
+  var starts=st.filter(function(c){return c[1]<=st[0][1]+40;}).slice(0,6);
+  var lim=ISOB.map(function(m){return m*SPEED;}),dist=dijkstra(starts,lim[3]);
+  var xy=GR.xy,EA=GR.EA,EB=GR.EB,EL=GR.EL,bx0=1e9,by0=1e9,bx1=-1e9,by1=-1e9,i,b;
+  for(i=0;i<GR.n;i++)if(dist[i]<=lim[3]){var vx=xy[2*i],vy=xy[2*i+1];if(vx<bx0)bx0=vx;if(vx>bx1)bx1=vx;if(vy<by0)by0=vy;if(vy>by1)by1=vy;}
+  var res=8,pad=260,x0=bx0-pad,y0=by0-pad,x1=bx1+pad,y1=by1+pad,w=Math.ceil((x1-x0)/res),h=Math.ceil((y1-y0)/res);
+  var tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;var c2=tmp.getContext('2d',{willReadFrequently:true});
+  c2.lineCap='round';c2.lineJoin='round';c2.lineWidth=84/res;c2.strokeStyle='#000';
+  function X(v){return(v-x0)/res;}function Y(v){return h-(v-y0)/res;}
+  var masks=[],als=[];
+  for(b=0;b<4;b++){
+    var D2=lim[b];c2.clearRect(0,0,w,h);c2.beginPath();
+    for(i=0;i<GR.e;i++){
+      var A=EA[i],B=EB[i],ca=dist[A],cb=dist[B];if(ca>D2&&cb>D2)continue;
+      var ax=xy[2*A],ay=xy[2*A+1],bx=xy[2*B],by=xy[2*B+1],L=EL[i]||1,la=ca<=D2?Math.min(L,D2-ca):0,lb=cb<=D2?Math.min(L,D2-cb):0;
+      if(la+lb>=L){c2.moveTo(X(ax),Y(ay));c2.lineTo(X(bx),Y(by));}
+      else{if(la>0){c2.moveTo(X(ax),Y(ay));c2.lineTo(X(ax+(bx-ax)*la/L),Y(ay+(by-ay)*la/L));}if(lb>0){c2.moveTo(X(bx),Y(by));c2.lineTo(X(bx+(ax-bx)*lb/L),Y(by+(ay-by)*lb/L));}}
+    }
+    c2.stroke();
+    var px=c2.getImageData(0,0,w,h).data,al=new Float32Array(w*h);
+    for(i=0;i<al.length;i++)al[i]=px[4*i+3]/255;
+    boxBlur(al,w,h,6);boxBlur(al,w,h,6);als.push(al);
+    var m=new Uint8Array(w*h);for(i=0;i<m.length;i++)m[i]=al[i]>.3?1:0;
+    masks.push(m);
+  }
+  var out=document.createElement('canvas');out.width=w;out.height=h;var oc=out.getContext('2d'),im=oc.createImageData(w,h),d=im.data,col=ISOC.map(hexRGB),FA=[.47,.41,.37,.33],TH=.3,area=[];
+  for(b=0;b<4;b++){var cc=0,mm=masks[b];for(i=0;i<mm.length;i++)cc+=mm[i];area.push(cc*res*res/1e6);}
+  for(i=0;i<w*h;i++){
+    var r=0,g=0,bl=0,a=0;
+    for(b=3;b>=0;b--){
+      var v=als[b][i],s=(v-(TH-.04))/.08;s=s<0?0:s>1?1:s;s=s*s*(3-2*s);var f=FA[b]*s;
+      if(f>0){r=col[b][0]*f+r*(1-f);g=col[b][1]*f+g*(1-f);bl=col[b][2]*f+bl*(1-f);a=f+a*(1-f);}
+      var q=(v-TH)/.04,ca=.9*Math.exp(-q*q);
+      if(ca>.02){r=col[b][0]*.62*ca+r*(1-ca);g=col[b][1]*.55*ca+g*(1-ca);bl=col[b][2]*.55*ca+bl*(1-ca);a=ca+a*(1-ca);}
+    }
+    if(a>0){var k=4*i;d[k]=r/a;d[k+1]=g/a;d[k+2]=bl/a;d[k+3]=a*255;}
+  }
+  oc.putImageData(im,0,0);
+  var stops=[0,0,0,0],rapid=[0,0,0,0],lines=[];
+  var order=[];NODES.forEach(function(nd,i){var s=GR.stopSnap[i];if(!s)return;var c=dist[s.g]+s.d;if(c<=lim[3])order.push([c,i]);});
+  for(b=0;b<4;b++){var seen={};order.forEach(function(o){if(o[0]>lim[b])return;var nd=NODES[o[1]];stops[b]++;if(nd.mask&12)rapid[b]++;nd.lines.forEach(function(li){if(!LINES[li].nt)seen[li]=1;});});lines.push(Object.keys(seen).length);}
+  var poi={};Object.keys(POI).forEach(function(k){var a=[0,0,0,0];GR.poiSnap[k].forEach(function(s){if(!s)return;var c=dist[s.g]+s.d;for(var b2=0;b2<4;b2++)if(c<=lim[b2])a[b2]++;});poi[k]=a;});
+  iso={canvas:out,x0:x0,y0:y0,x1:x1,y1:y1,lim:lim,area:area,stops:stops,rapid:rapid,lines:lines,poi:poi,speed:SPEED};
+  renderPanel();draw();
+}
+var heatImg={};
+function heatCanvas(k){
+  if(heatImg[k])return heatImg[k];var h=HM[k],c=document.createElement('canvas');c.width=G.w;c.height=G.h;
+  var x=c.getContext('2d'),im=x.createImageData(G.w,G.h),a=GL[k],ins=GL.walk,cols=BCOL.map(hexRGB);
+  for(var j=0;j<G.h;j++)for(var i=0;i<G.w;i++){var src=j*G.w+i;if(ins[src]===255)continue;var d=((G.h-1-j)*G.w+i)*4,v=a[src],rgb,al;
+    if(v===255){rgb=[170,176,189];al=120;}else{rgb=cols[band(h,v)];al=165;}
+    im.data[d]=rgb[0];im.data[d+1]=rgb[1];im.data[d+2]=rgb[2];im.data[d+3]=al;}
+  x.putImageData(im,0,0);heatImg[k]=c;return c;
+}
+function gridAt(k,x,y){var i=Math.floor((x-G.x0)/G.cell),j=Math.floor((y-G.y0)/G.cell);if(i<0||j<0||i>=G.w||j>=G.h)return 255;if(GL.walk[j*G.w+i]===255)return 255;return GL[k][j*G.w+i];}
+function distOf(k){var h=HM[k],a=GL[k],ins=GL.walk,c=[0,0,0,0,0],nd=0,tot=0;for(var i=0;i<a.length;i++){if(ins[i]===255)continue;tot++;if(a[i]===255)nd++;else c[band(h,a[i])]++;}return{c:c,nd:nd,tot:tot};}
+var layers={metro:true,tram:true,bus:true,rail:true,ferry:true,night:false,stops:true,labels:true,water:true,roads:true,green:true,poi:false,iso:true,bld:true,hcol:true};
+var sel=null,selLine=null,hover=null,heat=null,pin=null,iso=null,SPEED=80,GR=null,graphErr=null;
+
+/* ===== statistika ===== */
+function eLen(e){var a=NODES[e.i],b=NODES[e.j];return Math.hypot(a.x-b.x,a.y-b.y);}
+var STAT=MODES.map(function(m){
+  var km=0;[1,2,4,8,16,32].forEach(function(b){if(m.bit&b)km+=(D.km[b]||0);});
+  var nl=LINES.filter(function(l){return !l.nt&&(m.bit&l.m);}).length;
+  var nn=NODES.filter(function(n){return n.mask&m.bit;}).length;
+  return{m:m,edges:nl,km:km,nodes:nn};
+});
+var maxKm=Math.max.apply(null,STAT.map(function(s){return s.km;}));
+
+/* ===== plátno a pohled ===== */
+var cv=document.getElementById('cv'),ctx=cv.getContext('2d'),W=0,H=0,dpr=1;
+var V={cx:0,cy:0,s:.03},FIT=.03;
+function sx(x){return W/2+(x-V.cx)*V.s;}function sy(y){return H/2-(y-V.cy)*V.s;}
+function bbox(){var x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;RING.forEach(function(p){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);});return{x0:x0,x1:x1,y0:y0,y1:y1};}
+var BB=bbox();
+function fit(){V.cx=(BB.x0+BB.x1)/2;V.cy=(BB.y0+BB.y1)/2;V.s=FIT=Math.min(W/((BB.x1-BB.x0)*1.05),H/((BB.y1-BB.y0)*1.05));}
+function clampV(){V.s=Math.max(FIT*.6,Math.min(3,V.s));}
+function resize(){var r=cv.parentElement.getBoundingClientRect();dpr=window.devicePixelRatio||1;W=r.width;H=r.height;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);var first=!resize.done;resize.done=true;if(first)fit();else clampV();draw();resize3();}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+/* ===== kreslení ===== */
+function primary(n){return n.mask&4?'metro':n.mask&2?'tram':n.mask&8?'rail':n.mask&48?'ferry':'bus';}
+function nodeVisible(n){return(n.mask&4&&layers.metro)||(n.mask&2&&layers.tram)||(n.mask&1&&layers.bus)||(n.mask&8&&layers.rail)||(n.mask&48&&layers.ferry);}
+function draw(){if(mode==='3d'){sync3d();return;}draw2d();}
+function draw2d(){
+  if(!W)return;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle='#e8ebf0';ctx.fillRect(0,0,W,H);
+  ctx.beginPath();RING.forEach(function(p,i){var X=sx(p[0]),Y=sy(p[1]);if(i)ctx.lineTo(X,Y);else ctx.moveTo(X,Y);});ctx.closePath();
+  ctx.fillStyle='#f8f8f9';ctx.fill();ctx.setLineDash([7,5]);ctx.strokeStyle='#98a2b3';ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([]);
+  var s=V.s;
+  function polyPath(arrs){ctx.beginPath();var vx0=V.cx-W/2/V.s,vx1=V.cx+W/2/V.s,vy0=V.cy-H/2/V.s,vy1=V.cy+H/2/V.s;arrs.forEach(function(a){if(a.bb&&(a.bb[2]<vx0||a.bb[0]>vx1||a.bb[3]<vy0||a.bb[1]>vy1))return;ctx.moveTo(sx(a[0]),sy(a[1]));for(var k=2;k<a.length;k+=2)ctx.lineTo(sx(a[k]),sy(a[k+1]));});}
+  if(layers.green){
+    var gx0=V.cx-W/2/V.s,gx1=V.cx+W/2/V.s,gy0=V.cy-H/2/V.s,gy1=V.cy+H/2/V.s;
+    ctx.beginPath();GREEN.forEach(function(g){var b=g.bb;if(b[2]<gx0||b[0]>gx1||b[3]<gy0||b[1]>gy1)return;g.r.forEach(function(a){ctx.moveTo(sx(a[0]),sy(a[1]));for(var k=2;k<a.length;k+=2)ctx.lineTo(sx(a[k]),sy(a[k+1]));ctx.closePath();});});
+    ctx.fillStyle='#dcefd3';ctx.fill('evenodd');
+  }
+  if(heat){
+    ctx.save();ctx.beginPath();RING.forEach(function(p,i){var X=sx(p[0]),Y=sy(p[1]);if(i)ctx.lineTo(X,Y);else ctx.moveTo(X,Y);});ctx.closePath();ctx.clip();
+    ctx.imageSmoothingEnabled=true;ctx.drawImage(heatCanvas(heat),sx(G.x0),sy(G.y0+G.h*G.cell),G.w*G.cell*s,G.h*G.cell*s);ctx.restore();
+  }
+  if(layers.water){
+    ctx.beginPath();WATER.forEach(function(w){w.forEach(function(a){ctx.moveTo(sx(a[0]),sy(a[1]));for(var k=2;k<a.length;k+=2)ctx.lineTo(sx(a[k]),sy(a[k+1]));ctx.closePath();});});
+    ctx.fillStyle='#cfe2f6';ctx.fill('evenodd');
+    polyPath(RIV);ctx.strokeStyle='#bcd6f0';ctx.lineWidth=clamp(1+s*5,1,3);ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+  }
+  if(layers.roads){
+    ctx.lineCap='round';ctx.lineJoin='round';
+    var RS=[['service',.3,.7,1.3,'#d3d8e0','#ffffff'],['minor',.06,.9,2,'#c5cad4','#ffffff'],['tertiary',.04,1,2.4,'#bcc2cd','#ffffff'],['secondary',0,1.1,3,'#cdd2db','#ffffff'],['primary',0,1.3,3.8,'#e3b98c','#fde7cc'],['trunk',0,1.5,4.4,'#e3a98a','#fbd6c0'],['motorway',0,1.6,4.8,'#d98f7a','#f6b9a5']];
+    RS.forEach(function(r){if(!ROADS[r[0]]||s<r[1])return;var w=clamp(r[2]+s*(r[3]*3),r[2],r[3]*2.2);polyPath(ROADS[r[0]]);ctx.strokeStyle=r[4];ctx.lineWidth=w+1.4;ctx.stroke();});
+    RS.forEach(function(r){if(!ROADS[r[0]]||s<r[1])return;var w=clamp(r[2]+s*(r[3]*3),r[2],r[3]*2.2);polyPath(ROADS[r[0]]);ctx.strokeStyle=r[5];ctx.lineWidth=w;ctx.stroke();});
+  }
+  if(iso&&iso.canvas&&layers.iso){ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(iso.canvas,sx(iso.x0),sy(iso.y1),(iso.x1-iso.x0)*s,(iso.y1-iso.y0)*s);ctx.restore();}
+  var dim=(selLine!=null||sel!=null);
+  function pathOf(filter){ctx.beginPath();LINES.forEach(function(l){if(!filter(l))return;l.s.forEach(function(a){ctx.moveTo(sx(a[0]),sy(a[1]));for(var k=2;k<a.length;k+=2)ctx.lineTo(sx(a[k]),sy(a[k+1]));});});}
+  function strokeL(filter,color,w,dash,casing){
+    ctx.lineCap='round';ctx.lineJoin='round';
+    if(casing){pathOf(filter);ctx.strokeStyle='#fff';ctx.lineWidth=w+casing;ctx.setLineDash([]);ctx.stroke();}
+    pathOf(filter);ctx.strokeStyle=color;ctx.lineWidth=w;ctx.setLineDash(dash||[]);ctx.stroke();ctx.setLineDash([]);
+  }
+  if(layers.bus)strokeL(function(l){return l.m===1&&!l.nt;},'rgba(139,149,167,'+(dim?.3:.55)+')',clamp(.5+s*3,.5,1.8));
+  if(layers.night)strokeL(function(l){return l.nt;},'rgba(120,70,200,'+(dim?.3:.6)+')',clamp(.8+s*3,.8,2),[5,3]);
+  if(layers.rail)strokeL(function(l){return l.m===8;},'rgba(16,24,40,'+(dim?.35:.85)+')',clamp(1+s*5,1,2.6),[7,4]);
+  if(layers.tram)strokeL(function(l){return l.m===2&&!l.nt;},'rgba(61,59,243,'+(dim?.35:.9)+')',clamp(1.2+s*8,1.2,3.6));
+  if(layers.ferry)strokeL(function(l){return l.m===16||l.m===32;},'#0b7a8f',clamp(2+s*8,2,5));
+  if(layers.metro){
+    var mw=clamp(3+s*24,3,9);
+    var cols={};LINES.forEach(function(l){if(l.m===4)cols[l.c]=1;});
+    Object.keys(cols).forEach(function(c){strokeL(function(l){return l.m===4&&l.c===c;},'#'+c,mw,null,2.5);});
+  }
+  var hl=selLine!=null?[selLine]:(sel!=null?NODES[sel].lines:[]);
+  if(hl.length){
+    var set={};hl.forEach(function(i){set[i]=1;});
+    var wH=clamp(2.5+s*3,2.5,4.5);
+    strokeL(function(l){return set[l.i];},'#fff',wH+3);
+    strokeL(function(l){return set[l.i];},'#3d3bf3',wH);
+  }
+  if(layers.stops){
+    NODES.forEach(function(n,i){
+      if(!nodeVisible(n))return;var X=sx(n.x),Y=sy(n.y);if(X<-20||Y<-20||X>W+20||Y>H+20)return;
+      var p=primary(n),r,fill='#fff',stroke;
+      if(p==='metro'){r=clamp(4+s*18,4,9);stroke='#101828';ctx.lineWidth=2.2;}
+      else if(p==='tram'){r=clamp(1.8+s*10,1.8,5);fill='#fff';stroke='#3d3bf3';ctx.lineWidth=1.4;}
+      else if(p==='rail'){r=clamp(2.2+s*8,2.2,5);stroke='#101828';ctx.lineWidth=1.4;}
+      else if(p==='ferry'){r=clamp(3+s*8,3,6);stroke='#0b7a8f';ctx.lineWidth=2;}
+      else{if(s<.02)return;r=clamp(1+s*6,1,3.2);fill='#8b95a7';stroke='#8b95a7';ctx.lineWidth=.5;}
+      ctx.beginPath();ctx.arc(X,Y,r,0,6.2832);ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=stroke;ctx.stroke();
+    });
+  }
+  if(layers.labels){
+    ctx.font='700 12px Manrope,system-ui,sans-serif';ctx.textBaseline='middle';ctx.lineJoin='round';
+    var drawn=[];
+    NODES.forEach(function(n,i){
+      var show=(n.mask&4&&layers.metro&&s>.055)||(n.mask&2&&layers.tram&&s>.35)||(s>.9&&nodeVisible(n))||i===sel;if(!show)return;
+      var X=sx(n.x),Y=sy(n.y);if(X<-40||Y<-20||X>W+40||Y>H+20)return;
+      var tw=ctx.measureText(n.name).width,bx=X+10,by=Y-1;
+      for(var k=0;k<drawn.length;k++){var d=drawn[k];if(bx<d[0]+d[2]&&bx+tw>d[0]&&Math.abs(by-d[1])<13&&i!==sel)return;}
+      drawn.push([bx,by,tw]);
+      ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=4;ctx.strokeText(n.name,bx,by);ctx.fillStyle=i===sel?'#2b2ad1':'#101828';ctx.fillText(n.name,bx,by);
+    });
+  }
+  if(sel!=null){var n=NODES[sel],X=sx(n.x),Y=sy(n.y);ctx.beginPath();ctx.arc(X,Y,13,0,6.2832);ctx.strokeStyle='#3d3bf3';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(X,Y,4,0,6.2832);ctx.fillStyle='#3d3bf3';ctx.fill();}
+  var pc=[];if(heat&&POIC[heat])pc=[heat];else if(layers.poi)pc=Object.keys(POIC);
+  pc.forEach(function(k){var sz=clamp(2.5+s*7,2.5,7);ctx.fillStyle=POIC[k].c;ctx.strokeStyle='#fff';ctx.lineWidth=1.2;POI[k].forEach(function(p){var X=sx(p[0]),Y=sy(p[1]);if(X<-10||Y<-10||X>W+10||Y>H+10)return;ctx.beginPath();ctx.rect(X-sz,Y-sz,sz*2,sz*2);ctx.fill();ctx.stroke();});});
+  if(pc.length&&s>.5){ctx.font='700 11px Manrope,system-ui,sans-serif';ctx.textBaseline='middle';pc.forEach(function(k){POI[k].forEach(function(p){if(!p[2])return;var X=sx(p[0]),Y=sy(p[1]);if(X<-10||Y<-10||X>W+10||Y>H+10)return;ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=3;ctx.strokeText(p[2],X+9,Y);ctx.fillStyle=POIC[k].c;ctx.fillText(p[2],X+9,Y);});});}
+  if(pin){var PX=sx(pin.x),PY=sy(pin.y);ctx.beginPath();ctx.arc(PX,PY,10,0,6.2832);ctx.fillStyle='rgba(61,59,243,.18)';ctx.fill();ctx.beginPath();ctx.arc(PX,PY,5,0,6.2832);ctx.fillStyle='#3d3bf3';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
+  // měřítko
+  var want=110/s,nice=[100,200,500,1000,2000,5000,10000,20000],len=nice[0];nice.forEach(function(v){if(v<=want)len=v;});
+  var px=len*s,bx=16,by=H-22;
+  ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(bx-8,by-24,px+64,34);
+  ctx.fillStyle='#101828';ctx.fillRect(bx,by-3,px,3);ctx.fillRect(bx,by-9,2,9);ctx.fillRect(bx+px-2,by-9,2,9);
+  ctx.font='700 12px Manrope,system-ui,sans-serif';ctx.textBaseline='alphabetic';ctx.fillText(len>=1000?(len/1000)+' km':len+' m',bx+px+8,by);
+}
+
+/* ===== interakce ===== */
+var ptrs={},moved=0,start=null;
+function nearest(mx,my,maxPx){var best=-1,bd=maxPx*maxPx;NODES.forEach(function(n,i){if(!layers.stops&&!(n.mask&4))return;if(!nodeVisible(n))return;if(n.mask===1&&V.s<.02)return;var dx=sx(n.x)-mx,dy=sy(n.y)-my,d=dx*dx+dy*dy;if(n.mask&4)d*=.6;if(d<bd){bd=d;best=i;}});return best;}
+cv.addEventListener('pointerdown',function(e){cv.setPointerCapture(e.pointerId);ptrs[e.pointerId]={x:e.offsetX,y:e.offsetY};moved=0;start={x:e.offsetX,y:e.offsetY};cv.classList.add('drag');});
+cv.addEventListener('pointermove',function(e){
+  var p=ptrs[e.pointerId],ids=Object.keys(ptrs);
+  if(p){
+    if(ids.length===1){V.cx-=(e.offsetX-p.x)/V.s;V.cy+=(e.offsetY-p.y)/V.s;moved+=Math.abs(e.offsetX-p.x)+Math.abs(e.offsetY-p.y);}
+    else if(ids.length===2){var o=ids.filter(function(k){return +k!==e.pointerId;})[0],q=ptrs[o],d0=Math.hypot(p.x-q.x,p.y-q.y),d1=Math.hypot(e.offsetX-q.x,e.offsetY-q.y);if(d0>0){zoomAt((e.offsetX+q.x)/2,(e.offsetY+q.y)/2,d1/d0);}moved+=10;}
+    p.x=e.offsetX;p.y=e.offsetY;clampV();draw();hideTip();return;
+  }
+  var i=nearest(e.offsetX,e.offsetY,12);
+  if(i!==hover){hover=i;showTip(e);}else if(i>=0)showTip(e);
+  cv.style.cursor=i>=0?'pointer':'grab';
+});
+function endPtr(e){delete ptrs[e.pointerId];if(!Object.keys(ptrs).length)cv.classList.remove('drag');}
+cv.addEventListener('pointerup',function(e){var wasTap=moved<5&&start;endPtr(e);if(wasTap){var i=nearest(e.offsetX,e.offsetY,V.s<.08?6:14);if(i>=0){select(i);}else{placeAt(V.cx+(e.offsetX-W/2)/V.s,V.cy-(e.offsetY-H/2)/V.s);}}});
+cv.addEventListener('pointercancel',endPtr);
+cv.addEventListener('pointerleave',function(){hover=null;hideTip();});
+function zoomAt(mx,my,f){var wx=V.cx+(mx-W/2)/V.s,wy=V.cy-(my-H/2)/V.s;V.s=clamp(V.s*f,FIT*.6,3);V.cx=wx-(mx-W/2)/V.s;V.cy=wy+(my-H/2)/V.s;}
+cv.addEventListener('wheel',function(e){e.preventDefault();zoomAt(e.offsetX,e.offsetY,Math.exp(-e.deltaY*.0015));draw();hideTip();},{passive:false});
+cv.addEventListener('keydown',function(e){
+  var st=80/V.s,k=e.key;
+  if(k==='ArrowLeft')V.cx-=st;else if(k==='ArrowRight')V.cx+=st;else if(k==='ArrowUp')V.cy+=st;else if(k==='ArrowDown')V.cy-=st;
+  else if(k==='+'||k==='=')zoomAt(W/2,H/2,1.3);else if(k==='-')zoomAt(W/2,H/2,1/1.3);else return;
+  e.preventDefault();draw();
+});
+var tip=document.getElementById('tip');
+function showTip(e){if(hover==null||hover<0){hideTip();return;}var n=NODES[hover];tip.hidden=false;tip.innerHTML=n.name+'<small>'+modesOf(n).join(', ')+'</small>';tip.style.left=e.offsetX+'px';tip.style.top=e.offsetY+'px';}
+function hideTip(){tip.hidden=true;}
+function modesOf(n){return MODES.filter(function(m){return n.mask&m.bit;}).map(function(m){return m.n;});}
+function flyTo(i,minS){var n=NODES[i];if(mode==='3d'){fly3({tx:n.x,tz:-n.y,dist:700,pol:1.0},900);return;}V.cx=n.x;V.cy=n.y;V.s=Math.max(V.s,minS||.25);}
+
+/* ===== vrstvy (přepínače + legenda) ===== */
+function renderLayers(){
+  var h=MODES.map(function(m){var st=STAT.filter(function(s){return s.m===m;})[0];return '<label class="sw"><input type="checkbox" data-k="'+m.key+'"'+(layers[m.key]?' checked':'')+'><span class="trk"></span><span class="nm"><span class="sl" style="border-top-color:'+m.c+(m.dash?';border-top-style:dashed':'')+'"></span>'+m.n+'</span></label>';}).join('');
+  h+='<label class="sw"><input type="checkbox" data-k="roads"'+(layers.roads?' checked':'')+'><span class="trk"></span><span class="nm"><span class="sl" style="border-top-color:#e3b98c"></span>Silnice</span></label><label class="sw"><input type="checkbox" data-k="water"'+(layers.water?' checked':'')+'><span class="trk"></span><span class="nm"><span class="sl" style="border-top-color:#9cc3ec"></span>Řeka a voda</span></label>';
+  h+='<label class="sw"><input type="checkbox" data-k="night"'+(layers.night?' checked':'')+'><span class="trk"></span><span class="nm"><span class="sl" style="border-top-color:#7846c8;border-top-style:dashed"></span>Noční linky</span></label>';
+  h+='<label class="sw"><input type="checkbox" data-k="stops"'+(layers.stops?' checked':'')+'><span class="trk"></span><span class="nm">Zastávky</span></label><label class="sw"><input type="checkbox" data-k="labels"'+(layers.labels?' checked':'')+'><span class="trk"></span><span class="nm">Názvy</span></label>';
+  h+='<p class="cap" style="margin-top:8px">Metro: <b style="color:#00a562">A</b> zelená, <b style="color:#b07a00">B</b> žlutá, <b style="color:#e31e24">C</b> červená. </p>';
+  h+='<label class="sw"><input type="checkbox" data-k="green"'+(layers.green?' checked':'')+'><span class="trk"></span><span class="nm"><span class="sl" style="border-top-color:#9fd18f"></span>Zeleň</span></label><label class="sw"><input type="checkbox" data-k="iso"'+(layers.iso?' checked':'')+'><span class="trk"></span><span class="nm"><span class="sl" style="border-top-color:#ea580c"></span>Docházkové zóny</span></label><label class="sw"><input type="checkbox" data-k="poi"'+(layers.poi?' checked':'')+'><span class="trk"></span><span class="nm">Všechny body zájmu</span></label>';
+  if(mode==='3d'){h+='<p class="ov" style="margin-top:14px">3D</p><label class="sw"><input type="checkbox" data-k="bld"'+(layers.bld?' checked':'')+'><span class="trk"></span><span class="nm">Budovy</span></label><label class="sw"><input type="checkbox" data-k="hcol"'+(layers.hcol?' checked':'')+'><span class="trk"></span><span class="nm">Barvit podle výšky</span></label>';
+    if(DEM){h+='<p class="sub2">Převýšení terénu</p><div style="display:flex;gap:6px;flex-wrap:wrap">';[1,2,3,5].forEach(function(v){h+='<button type="button" data-ex="'+v+'" aria-pressed="'+(EX===v)+'" style="min-height:36px;padding:0 12px;border-radius:999px;border:0;font:inherit;font-weight:700;font-size:13px;cursor:pointer;background:'+(EX===v?'var(--accent)':'var(--seg-bg)')+';color:'+(EX===v?'#fff':'var(--ink)')+'">'+v+'×</button>';});h+='</div>';}}
+  h+='<p class="ov" style="margin-top:14px">Dostupnost</p><label class="rd"><input type="radio" name="heat" value=""'+(heat?'':' checked')+'>Bez barevné plochy</label>';
+  var gg='';HEAT.forEach(function(x){if(x.g!==gg){gg=x.g;h+='<p class="sub2">'+gg+'</p>';}h+='<label class="rd"><input type="radio" name="heat" value="'+x.k+'"'+(heat===x.k?' checked':'')+'>'+x.t+'</label>';});
+  document.getElementById('layers').innerHTML=h;
+}
+document.getElementById('layers').addEventListener('change',function(e){if(e.target.name==='heat'){heat=e.target.value||null;renderPanel();draw();return;}var k=e.target.getAttribute('data-k');if(!k)return;layers[k]=e.target.checked;draw();});
+document.getElementById('layers').addEventListener('click',function(e){var b=e.target.closest('[data-ex]');if(!b)return;setEX(+b.getAttribute('data-ex'));renderLayers();});
+
+/* ===== panel ===== */
+function fmtKm(v){return v.toFixed(1).replace('.',',')+' km';}
+function lineColor(l){return l.m===4?'#'+l.c:l.nt?'#7846c8':l.m===2?'#3d3bf3':l.m===8?'#101828':l.m===1?'#6b7689':'#0b7a8f';}
+function lineChip(l,big){var c=lineColor(l),dk=(l.m===4&&l.c==='F8B322');return '<button type="button" data-line="'+l.i+'" aria-label="Linka '+l.n+'" style="border:0;cursor:pointer;font:inherit;font-weight:800;min-height:'+(big?44:32)+'px;min-width:'+(big?56:40)+'px;padding:2px '+(big?18:10)+'px;border-radius:'+(big?14:10)+'px;background:'+c+';color:'+(dk?'#101828':'#fff')+';font-size:'+(big?26:13)+'px;margin:1px">'+l.n+'</button>';}
+function dotFor(k,v){return v===255?'<span class="dot" style="background:#b0b7c3"></span>':'<span class="dot" style="background:'+BCOL[band(HM[k],v)]+'"></span>';}
+function heatCardHTML(){
+  if(!heat)return '';var h=HM[heat],d=distOf(heat),tx=BTXT[h.kind],tot=d.tot,mx=Math.max.apply(null,d.c.concat([d.nd]));
+  var s='<section class="card"><p class="ov">Barevná plocha</p><h2>'+h.t+'</h2><p class="cap">'+h.d+'. Čas počítám vzdušnou čarou krát 1,3 při 80 m za minutu.</p><div class="tbl" style="margin-top:10px"><table><thead><tr><th>Hodnocení</th><th>'+(h.kind==='f'?'Spojů/h':'Pěšky')+'</th><th class="r">Plocha</th><th></th></tr></thead><tbody>';
+  for(var i=0;i<5;i++){s+='<tr><td><span class="dot" style="background:'+BCOL[i]+'"></span>'+BANDS[i]+'</td><td>'+tx[i]+'</td><td class="r">'+(100*d.c[i]/tot).toFixed(0)+' %</td><td style="min-width:70px"><div class="hb"><b style="width:'+(100*d.c[i]/mx).toFixed(0)+'%;background:'+BCOL[i]+'"></b></div></td></tr>';}
+  if(d.nd)s+='<tr><td><span class="dot" style="background:#b0b7c3"></span>Bez dat</td><td>mimo výřez OSM</td><td class="r">'+(100*d.nd/tot).toFixed(0)+' %</td><td></td></tr>';
+  s+='</tbody></table></div><p class="cap" style="margin-top:8px">Podíl rozlohy Prahy, ne obyvatel. Lesy a pole průměr zhoršují. '+(HEAT.indexOf(h)>2?'Úplnost závisí na OpenStreetMap, zvlášť u lékařů.':'')+'</p></section>';return s;
+}
+function placeAt(x,y){pin={x:x,y:y};iso=null;sel=null;selLine=null;renderPanel();draw();if(GR)setTimeout(computeIso,30);}
+function isoHTML(){
+  if(!pin)return '';
+  var s='<section class="card"><p class="ov">Docházková vzdálenost</p><h2>Co stihnu pěšky</h2>';
+  if(graphErr)return s+'<p class="cap">'+graphErr+'</p></section>';
+  if(!GR)return s+'<p class="cap">Načítám síť chodníků a cest…</p></section>';
+  if(!iso)return s+'<p class="cap">Počítám dosah…</p></section>';
+  if(iso.none)return s+'<p class="cap">Poblíž tohoto místa není v datech žádná cesta. Zkuste jiné místo.</p></section>';
+  var sp=[[60,'Pomalu'],[80,'Normálně'],[100,'Svižně']];
+  s+='<p class="cap">Po skutečných cestách z OSM, mosty a podchody včetně. Rychlost '+iso.speed+' m za minutu ('+(iso.speed*.06).toFixed(1).replace('.',',')+' km/h).</p><div style="display:flex;gap:6px;margin:10px 0" role="group" aria-label="Rychlost chůze">';
+  sp.forEach(function(x){var on=x[0]===iso.speed;s+='<button type="button" data-speed="'+x[0]+'" aria-pressed="'+on+'" style="min-height:36px;padding:0 12px;border-radius:999px;border:0;font:inherit;font-weight:700;font-size:13px;cursor:pointer;background:'+(on?'var(--accent)':'var(--seg-bg)')+';color:'+(on?'#fff':'var(--ink)')+'">'+x[1]+'</button>';});
+  s+='</div><div class="tbl"><table><thead><tr><th></th>';
+  for(var b=0;b<4;b++)s+='<th class="r"><span class="dot" style="background:'+ISOC[b]+'"></span>'+ISOB[b]+' min</th>';
+  s+='</tr></thead><tbody>';
+  function row(lab,arr,f){s+='<tr><td>'+lab+'</td>';for(var b=0;b<4;b++)s+='<td class="r">'+(f?f(arr[b]):arr[b])+'</td>';s+='</tr>';}
+  row('Vzdálenost',iso.lim,function(v){return v>=1000?(v/1000).toFixed(1).replace('.',',')+' km':v+' m';});
+  row('Plocha, km²',iso.area,function(v){return v.toFixed(v<10?1:0).replace('.',',');});
+  row('Zastávky MHD',iso.stops);row('Linky MHD',iso.lines);row('Metro, vlak',iso.rapid);
+  row('Školky',iso.poi.ms);row('Školy',iso.poi.zs);row('Obchody',iso.poi.obchod);row('Lékaři',iso.poi.lekar);row('Lékárny',iso.poi.lekarna);
+  return s+'</tbody></table></div><p class="cap" style="margin-top:8px">Hodnoty jsou kumulativní. Plocha je vyhlazený odhad dosahu, linky bez nočních. Barevné plochy výše počítají jinak, vzdušnou čarou krát 1,3.</p></section>';
+}
+function nearestOf(arr,x,y){var b=-1,bd=1e18;for(var i=0;i<arr.length;i++){var dx=arr[i][0]-x,dy=arr[i][1]-y,d=dx*dx+dy*dy;if(d<bd){bd=d;b=i;}}return b<0?null:{i:b,d:Math.sqrt(bd)};}
+function wm(d){return Math.round(d*1.3/80);}
+function placeHTML(){
+  if(!pin)return '';var x=pin.x,y=pin.y;
+  if(gridAt('walk',x,y)===255)return '<section class="card"><p class="ov">Toto místo</p><h2>Mimo Prahu</h2><p class="cap">Klikněte dovnitř tarifního pásma P.</p></section>';
+  var rows=[];
+  var best=-1,bd=1e18,bR=-1,bdR=1e18;NODES.forEach(function(n,i){var dx=n.x-x,dy=n.y-y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=i;}if(n.mask&12&&d<bdR){bdR=d;bR=i;}});
+  var m1=wm(Math.sqrt(bd)),m2=wm(Math.sqrt(bdR));
+  rows.push(['Zastávka',NODES[best].name,m1+' min',dotFor('walk',Math.min(m1,60))]);
+  rows.push(['Metro nebo vlak',NODES[bR].name,m2+' min',dotFor('rapid',Math.min(m2,60))]);
+  var rad=80*5/1.3,bestR={};NODES.forEach(function(n){var dx=n.x-x,dy=n.y-y;if(dx*dx+dy*dy>rad*rad)return;n.lines.forEach(function(li,k){var v=n.fr[k]||0;if(v>(bestR[li]||0))bestR[li]=v;});});
+  var tl=0,nl=0;Object.keys(bestR).forEach(function(li){tl+=bestR[li];nl++;});
+  rows.push(['Spoje v dosahu 5 min',nl+' linek',Math.round(tl)+' spojů/h',dotFor('freq',Math.min(Math.round(tl),250))]);
+  var gz=gridAt('zelen',x,y);rows.push(['Zeleň','park, les, louka',gz===255?'bez dat':gz+' min',dotFor('zelen',gz)]);
+  var osm=(y>=-12937&&y<=7187);
+  ['ms','zs','obchod','lekar','lekarna'].forEach(function(k){var nn=osm?nearestOf(POI[k],x,y):null;if(!nn){rows.push([HM[k].t,'bez dat OSM','—',dotFor(k,255)]);return;}var mm=wm(nn.d);rows.push([HM[k].t,POI[k][nn.i][2]||'bez názvu',mm+' min',dotFor(k,Math.min(mm,60))]);});
+  var s='<section class="card"><p class="ov">Toto místo</p><h2>Co je poblíž</h2><p class="cap">Chůze: vzdušná čára krát 1,3, 80 m za minutu.</p><div class="tbl" style="margin-top:10px"><table><thead><tr><th>Co</th><th>Nejbližší</th><th class="r">Čas</th></tr></thead><tbody>';
+  rows.forEach(function(r){s+='<tr><td>'+r[3]+r[0]+'</td><td>'+r[1]+'</td><td class="r" style="white-space:nowrap">'+r[2]+'</td></tr>';});
+  return s+'</tbody></table></div><button type="button" class="btn" id="clrPin" style="margin-top:12px">Zrušit značku</button></section>';
+}
+function renderPanel(){
+  var h='<section class="card"><h2>Síť MHD v datech</h2><p class="cap" style="margin-bottom:10px">Délka sítě bez dvojího započtení souběžných linek (odhad ±3 %). Autobusy zahrnují i regionální linky uvnitř Prahy.</p><div class="tbl"><table><thead><tr><th>Doprava</th><th class="r">Zastávky</th><th class="r">Linky</th><th>Délka</th></tr></thead><tbody>';
+  STAT.forEach(function(s){h+='<tr><td><span class="chip" style="background:var(--seg-bg);color:var(--ink)"><i style="background:'+s.m.c+'"></i>'+s.m.n+'</span></td><td class="r">'+s.nodes+'</td><td class="r">'+s.edges+'</td><td style="min-width:110px"><div style="display:flex;gap:6px;align-items:center"><div class="bar" style="flex:1"><b style="width:'+(100*s.km/maxKm).toFixed(1)+'%;background:'+s.m.c+'"></b></div><span class="num" style="min-width:62px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums">'+fmtKm(s.km)+'</span></div></td></tr>';});
+  h+='</tbody></table></div><p class="cap" style="margin-top:10px">Zastávky stejného jména do 250 m jsou sloučené do jednoho bodu (nástupiště). Celkem '+NODES.length+' míst a '+LINES.length+' linek (z toho '+LINES.filter(function(l){return l.nt;}).length+' nočních).</p></section>';
+  if(selLine!=null){
+    var L=LINES[selLine],md=MODES.filter(function(x){return x.bit&L.m;})[0];
+    h+='<section class="card"><p class="ov">Vybraná linka</p><h3>'+lineChip(L,true)+'</h3><p class="cap" style="margin-top:8px">'+(L.nt?'Noční linka, ':'')+md.n+(L.rg?', regionální':'')+'</p><div class="tbl" style="margin-top:10px"><table><tbody><tr><td>Délka v Praze (jeden směr, přibližně)</td><td class="r">'+fmtKm(L.len/2000)+'</td></tr><tr><td>Zastávky v Praze</td><td class="r">'+L.stops+'</td></tr></tbody></table></div><button type="button" class="btn" id="clrLine" style="margin-top:12px">Zrušit výběr linky</button></section>';
+  }
+  if(sel!=null){
+    var n=NODES[sel],nb={};
+    n.adj.forEach(function(e){var o=e.i===sel?e.j:e.i,k=o+'|'+e.m;nb[k]=nb[k]||{o:o,m:e.m,w:0,d:eLen(e),line:e.line};nb[k].w+=e.w;});
+    var rows=Object.keys(nb).map(function(k){return nb[k];}).sort(function(a,b){return b.w-a.w;});
+    h+='<section class="card"><p class="ov">Vybraná zastávka</p><h3>'+n.name+'</h3><div class="chips">'+modesOf(n).map(function(m){var md=MODES.filter(function(x){return x.n===m;})[0];return '<span class="chip"><i style="background:'+md.c+'"></i>'+m+'</span>';}).join('')+'</div>';
+    h+='<p class="cap" style="margin-top:12px">Linky ('+n.lines.length+')</p><div class="chips" style="margin-top:6px">'+(n.lines.map(function(i){return lineChip(LINES[i]);}).join('')||'<span class="cap">Bez linky v datech</span>')+'</div>';
+    h+='<p class="cap" style="margin-top:12px">Napojení na sousední zastávky ('+rows.length+'). Spoje jsou počet v datech, všechny dny dohromady.</p><div class="tbl"><table><thead><tr><th>Sousední zastávka</th><th>Doprava</th><th class="r">Vzdál.</th><th class="r">Spojů</th></tr></thead><tbody>';
+    rows.slice(0,14).forEach(function(r){var md=MODES.filter(function(x){return x.bit&r.m;})[0];h+='<tr><td><button type="button" data-go="'+r.o+'" style="border:0;background:none;padding:4px 0;font:inherit;font-weight:700;color:var(--accent-deep);cursor:pointer;text-align:left;min-height:32px">'+NODES[r.o].name+'</button></td><td>'+(r.m===4&&r.line?'Metro '+r.line:md.n)+'</td><td class="r">'+Math.round(r.d/10)*10+' m</td><td class="r">'+r.w+'</td></tr>';});
+    h+='</tbody></table></div>'+(rows.length>14?'<p class="cap" style="margin-top:6px">Zobrazeno 14 z '+rows.length+' napojení.</p>':'')+'</section>';
+  }else if(!pin&&selLine==null){
+    h+='<section class="card"><h2>Vyberte místo</h2><p class="cap" style="font-size:14px;margin-top:6px">Klikněte na zastávku, nebo kamkoli do mapy. U zastávky uvidíte linky, u místa vzdálenost k MHD, zeleni, školkám, obchodům a lékařům.</p></section>';
+  }
+  document.getElementById('panel').innerHTML=heatCardHTML()+isoHTML()+placeHTML()+bldHTML()+h+bldStatsHTML();
+}
+document.getElementById('panel').addEventListener('click',function(e){var lb=e.target.closest('[data-line]');if(lb){selectLine(+lb.getAttribute('data-line'));return;}if(e.target.id==='clrPin'){clearPin();renderPanel();draw();return;}var sb=e.target.closest('[data-speed]');if(sb){SPEED=+sb.getAttribute('data-speed');iso=null;renderPanel();setTimeout(computeIso,30);return;}if(e.target.id==='clrLine'){selLine=null;renderPanel();draw();return;}var b=e.target.closest('[data-go]');if(b){var i=+b.getAttribute('data-go');select(i);flyTo(i,V.s);draw();}});
+function select(i){sel=i;if(i!=null){selLine=null;clearPin();}renderPanel();draw();}
+function selectLine(i){selLine=i;clearPin();renderPanel();draw();}
+
+/* ===== hledání ===== */
+function norm(s){return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+var NN=NODES.map(function(n){return norm(n.name);});
+var q=document.getElementById('q'),sug=document.getElementById('sug');
+q.addEventListener('input',function(){
+  var v=norm(q.value.trim());if(v.length<2){sug.hidden=true;return;}
+  var res=[];for(var i=0;i<NODES.length&&res.length<40;i++){var p=NN[i].indexOf(v);if(p>=0)res.push([p===0?0:1,i]);}
+  res.sort(function(a,b){return a[0]-b[0]||NODES[a[1]].name.length-NODES[b[1]].name.length;});
+  res=res.slice(0,5);var lr=[];LINES.forEach(function(l){if(norm(l.n)===v&&lr.length<4)lr.push(l);});
+  sug.innerHTML=lr.map(function(l){return '<li><button type="button" data-l="'+l.i+'">Linka '+l.n+'<small>'+(l.nt?'noční, ':'')+MODES.filter(function(x){return x.bit&l.m;})[0].n+'</small></button></li>';}).join('')+(res.length?res.map(function(r){var n=NODES[r[1]];return '<li><button type="button" data-i="'+r[1]+'">'+n.name+'<small>'+modesOf(n).join(', ')+'</small></button></li>';}).join(''):(lr.length?'':'<li><span class="cap" style="padding:8px 10px;display:block">Nic nenalezeno</span></li>'));
+  sug.hidden=false;
+});
+sug.addEventListener('click',function(e){var lb=e.target.closest('[data-l]');if(lb){var li=+lb.getAttribute('data-l');q.value='Linka '+LINES[li].n;sug.hidden=true;sel=null;selectLine(li);return;}var b=e.target.closest('[data-i]');if(!b)return;var i=+b.getAttribute('data-i');q.value=NODES[i].name;sug.hidden=true;layers.stops=true;renderLayers();flyTo(i,.4);select(i);});
+q.addEventListener('keydown',function(e){if(e.key==='Enter'){var b=sug.querySelector('[data-l],[data-i]');if(b)b.click();}else if(e.key==='Escape'){sug.hidden=true;}});
+
+/* ===== 3D režim ===== */
+var mode='2d',T=null,BLD=D.bld,BD=null,bsel=null,DEM=D.dem||null,demZ=DEM?Float32Array.from(DEM.z):null,EX=DEM?2:1,DEM0=170;
+var PXM=111320*Math.cos(50.08*Math.PI/180),PYM=110574;
+function demAt(i,j){i=i<0?0:i>=DEM.nx?DEM.nx-1:i;j=j<0?0:j>=DEM.ny?DEM.ny-1:j;return demZ[j*DEM.nx+i];}
+function crm(p0,p1,p2,p3,t){return p1+.5*t*(p2-p0+t*(2*p0-5*p1+4*p2-p3+t*(3*(p1-p2)+p3-p0)));}
+function elev(x,y){
+  if(!DEM)return 0;
+  var u=(14.42+x/PXM-DEM.lon0)/DEM.dlon,v=(50.08+y/PYM-DEM.lat0)/DEM.dlat,i=Math.floor(u),j=Math.floor(v),fu=u-i,fv=v-j,r0,r1,r2,r3;
+  function row(m){return crm(demAt(i-1,j+m),demAt(i,j+m),demAt(i+1,j+m),demAt(i+2,j+m),fu);}
+  r0=row(-1);r1=row(0);r2=row(1);r3=row(2);
+  return crm(r0,r1,r2,r3,fv)-DEM0;
+}
+function elevX(x,y){return elev(x,y)*EX;}
+var TS=BLD.ts,NX=BLD.nx,NY=BLD.ny,TX0=BLD.tx0,TY0=BLD.ty0;
+var glc=document.getElementById('gl'),labEl=document.getElementById('lab'),busyEl=document.getElementById('busy');
+function loadBuildings(){
+  if(BD||T.loading)return;T.loading=true;busyEl.hidden=false;busyEl.textContent='Načítám budovy…';
+  var bin=Uint8Array.from(atob(BLD.b),function(c){return c.charCodeAt(0);});BLD.b=null;
+  new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer().then(function(buf){
+    var o=0,tn=BLD.tn,n=BLD.n;
+    var counts=new Uint16Array(buf.slice(o,o+2*tn));o+=2*tn;
+    var Hh=new Uint8Array(buf.slice(o,o+n));o+=n;var FL=new Uint8Array(buf.slice(o,o+n));o+=n;var NR=new Uint8Array(buf.slice(o,o+n));o+=n;
+    var NP=new Uint16Array(buf.slice(o,o+2*BLD.np));o+=2*BLD.np;var CO=new Int16Array(buf.slice(o,o+2*BLD.nc));
+    var bS=new Int32Array(tn+1),rS=new Int32Array(tn+1),cS=new Int32Array(tn+1),b=0,ri=0,cp=0;
+    for(var t=0;t<tn;t++){bS[t]=b;rS[t]=ri;cS[t]=cp;for(var k=0;k<counts[t];k++,b++){for(var r=0;r<NR[b];r++){cp+=2*NP[ri];ri++;}}}
+    bS[tn]=b;rS[tn]=ri;cS[tn]=cp;
+    BD={counts:counts,H:Hh,FL:FL,NR:NR,NP:NP,CO:CO,bS:bS,rS:rS,cS:cS};T.loading=false;busyEl.hidden=true;
+    updateTiles();T.dirty=true;renderPanel();
+  }).catch(function(err){T.loading=false;busyEl.hidden=false;busyEl.textContent='Budovy se nepodařilo načíst';});
+}
+
+/* ===== podklad země (textura dlaždice) ===== */
+function drawGround3(c,ox,oy,size,px,coarse){
+  var k=px/size,x1=ox+size,y1=oy+size;
+  function X(x){return(x-ox)*k;}function Y(y){return(y1-y)*k;}
+  function hit(b){return !(b[2]<ox||b[0]>x1||b[3]<oy||b[1]>y1);}
+  function path(arrs){c.beginPath();arrs.forEach(function(a){if(!hit(a.bb))return;c.moveTo(X(a[0]),Y(a[1]));for(var j=2;j<a.length;j+=2)c.lineTo(X(a[j]),Y(a[j+1]));});}
+  c.fillStyle='#e6e9ef';c.fillRect(0,0,px,px);
+  c.beginPath();RING.forEach(function(p,i){if(i)c.lineTo(X(p[0]),Y(p[1]));else c.moveTo(X(p[0]),Y(p[1]));});c.closePath();c.fillStyle='#f7f7f8';c.fill();
+  c.lineCap='round';c.lineJoin='round';
+  if(layers.green){
+    c.beginPath();GREEN.forEach(function(g){if(!hit(g.bb))return;g.r.forEach(function(a){c.moveTo(X(a[0]),Y(a[1]));for(var j=2;j<a.length;j+=2)c.lineTo(X(a[j]),Y(a[j+1]));c.closePath();});});
+    c.fillStyle='#d9edd0';c.fill('evenodd');
+  }
+  if(layers.water){
+    c.beginPath();WATER.forEach(function(w){if(!hit(w[0].bb))return;w.forEach(function(a){c.moveTo(X(a[0]),Y(a[1]));for(var j=2;j<a.length;j+=2)c.lineTo(X(a[j]),Y(a[j+1]));c.closePath();});});
+    c.fillStyle='#c6dcf3';c.fill('evenodd');
+    path(RIV);c.strokeStyle='#c6dcf3';c.lineWidth=Math.max(1,6*k);c.stroke();
+  }
+  if(layers.roads){
+    var RS=[['service',3,'#d8dce3','#fff'],['minor',5,'#cfd4dc','#fff'],['tertiary',7,'#c3c9d3','#fff'],['secondary',9,'#d3b88f','#fff0d9'],['primary',11,'#d3a47f','#fde2c8'],['trunk',12,'#d29a82','#fad0ba'],['motorway',14,'#c98672','#f3b3a0']];
+    RS.forEach(function(r){if(!ROADS[r[0]]||(coarse&&(r[0]==='service'||r[0]==='minor')))return;path(ROADS[r[0]]);c.strokeStyle=r[2];c.lineWidth=Math.max(coarse?1.2:1,r[1]*k)+(coarse?.8:1.6);c.stroke();});
+    RS.forEach(function(r){if(!ROADS[r[0]]||(coarse&&(r[0]==='service'||r[0]==='minor')))return;path(ROADS[r[0]]);c.strokeStyle=r[3];c.lineWidth=Math.max(coarse?1.2:1,r[1]*k);c.stroke();});
+  }
+  function lp(f){c.beginPath();LINES.forEach(function(l){if(!f(l))return;l.s.forEach(function(a){if(!hit(a.bb))return;c.moveTo(X(a[0]),Y(a[1]));for(var j=2;j<a.length;j+=2)c.lineTo(X(a[j]),Y(a[j+1]));});});}
+  if(layers.bus){lp(function(l){return l.m===1&&!l.nt;});c.strokeStyle='rgba(120,130,148,.55)';c.lineWidth=Math.max(.9,2.6*k);c.stroke();}
+  if(layers.night){lp(function(l){return l.nt;});c.setLineDash([Math.max(3,14*k),Math.max(2,9*k)]);c.strokeStyle='rgba(120,70,200,.65)';c.lineWidth=Math.max(1,3*k);c.stroke();c.setLineDash([]);}
+  if(layers.rail){lp(function(l){return l.m===8;});c.setLineDash([Math.max(4,18*k),Math.max(3,10*k)]);c.strokeStyle='#101828';c.lineWidth=Math.max(1,3.2*k);c.stroke();c.setLineDash([]);}
+  if(layers.tram){lp(function(l){return l.m===2&&!l.nt;});c.strokeStyle='#3d3bf3';c.lineWidth=Math.max(1.3,4.5*k);c.stroke();}
+  if(layers.ferry){lp(function(l){return l.m===16||l.m===32;});c.strokeStyle='#0b7a8f';c.lineWidth=Math.max(1.5,5*k);c.stroke();}
+  if(layers.metro){var mc={};LINES.forEach(function(l){if(l.m===4)mc[l.c]=1;});Object.keys(mc).forEach(function(cc){lp(function(l){return l.m===4&&l.c===cc;});c.strokeStyle='#fff';c.lineWidth=Math.max(2,11*k);c.stroke();c.strokeStyle='#'+cc;c.lineWidth=Math.max(1.4,8*k);c.stroke();});}
+  if(layers.stops){
+    NODES.forEach(function(n){if(n.x<ox-20||n.x>x1+20||n.y<oy-20||n.y>y1+20||!nodeVisible(n))return;
+      var p=primary(n);if(p==='bus'&&k<.5)return;
+      var r=p==='metro'?Math.max(2.4,11*k):p==='bus'?Math.max(1.2,3.6*k):Math.max(1.6,5.5*k);
+      c.beginPath();c.arc(X(n.x),Y(n.y),r,0,6.2832);c.fillStyle='#fff';c.fill();c.lineWidth=Math.max(1,(p==='metro'?3:1.8)*k);c.strokeStyle=p==='metro'?'#101828':p==='tram'?'#3d3bf3':p==='rail'?'#101828':p==='ferry'?'#0b7a8f':'#6b7689';c.stroke();});
+  }
+  var pc=[];if(heat&&POIC[heat])pc=[heat];else if(layers.poi)pc=Object.keys(POIC);
+  if(!coarse)pc.forEach(function(kk){var sz=Math.max(2,7*k);c.fillStyle=POIC[kk].c;c.strokeStyle='#fff';c.lineWidth=Math.max(1,1.2);POI[kk].forEach(function(p){if(p[0]<ox||p[0]>x1||p[1]<oy||p[1]>y1)return;c.beginPath();c.rect(X(p[0])-sz,Y(p[1])-sz,sz*2,sz*2);c.fill();c.stroke();});});
+  c.beginPath();RING.forEach(function(p,i){if(i)c.lineTo(X(p[0]),Y(p[1]));else c.moveTo(X(p[0]),Y(p[1]));});c.closePath();
+  c.setLineDash([Math.max(6,60*k),Math.max(4,40*k)]);c.strokeStyle='#98a2b3';c.lineWidth=Math.max(1.2,7*k);c.stroke();c.setLineDash([]);
+}
+
+/* ===== inicializace three.js ===== */
+var SEGT=16;
+function gridGeo(x0,y0,x1,y1,nx,ny,lift){
+  var g=new THREE.BufferGeometry(),n=(nx+1)*(ny+1),pos=new Float32Array(n*3),uv=new Float32Array(n*2),idx=new Uint32Array(nx*ny*6),i,j,k,p=0;
+  for(j=0;j<=ny;j++)for(i=0;i<=nx;i++){var x=x0+(x1-x0)*i/nx,y=y0+(y1-y0)*j/ny;k=j*(nx+1)+i;pos[3*k]=x;pos[3*k+1]=elevX(x,y)+lift;pos[3*k+2]=-y;uv[2*k]=i/nx;uv[2*k+1]=j/ny;}
+  for(j=0;j<ny;j++)for(i=0;i<nx;i++){var a=j*(nx+1)+i,b=a+1,c=a+nx+1,d=c+1;idx[p++]=a;idx[p++]=b;idx[p++]=c;idx[p++]=b;idx[p++]=d;idx[p++]=c;}
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setIndex(new THREE.BufferAttribute(idx,1));
+  return g;
+}
+function init3d(){
+  if(T)return true;
+  if(!window.THREE||!THREE.MapControls||!window.DecompressionStream)return false;
+  T={dirty:true,groundTiles:{},bTiles:{},queue:[],pumping:false,lastUpd:0,key:'',anim:null,on:false,sig:{},loading:false,px:640};
+  var r=new THREE.WebGLRenderer({canvas:glc,antialias:true,powerPreference:'high-performance'});
+  r.setPixelRatio(Math.min(window.devicePixelRatio||1,2));T.r=r;
+  var SKY=0xeef1f6;T.scene=new THREE.Scene();T.scene.background=new THREE.Color(SKY);T.scene.fog=new THREE.Fog(SKY,5000,16000);
+  T.cam=new THREE.PerspectiveCamera(45,1,10,120000);
+  T.ctl=new THREE.MapControls(T.cam,glc);
+  var c=T.ctl;c.screenSpacePanning=false;c.maxPolarAngle=Math.PI*.47;c.minDistance=50;c.maxDistance=45000;c.enableDamping=true;c.dampingFactor=.12;c.rotateSpeed=.6;
+  c.addEventListener('change',function(){T.dirty=true;});
+  T.scene.add(new THREE.AmbientLight(0xffffff,.56));
+  var sun=new THREE.DirectionalLight(0xffffff,.5);sun.position.set(-.6,.9,.5);T.scene.add(sun);
+  T.matCol=new THREE.MeshLambertMaterial({vertexColors:true});T.matWhite=new THREE.MeshLambertMaterial({color:0xeceef2});
+  T.aniso=r.capabilities.getMaxAnisotropy();
+  /* hrubý podklad celé Prahy */
+  var bw=BB.x1-BB.x0+4000,bh=BB.y1-BB.y0+4000;T.bs=Math.max(bw,bh);T.bx=(BB.x0+BB.x1)/2-T.bs/2;T.by=(BB.y0+BB.y1)/2-T.bs/2;
+  T.baseCv=document.createElement('canvas');T.baseCv.width=T.baseCv.height=2048;
+  T.baseTex=new THREE.CanvasTexture(T.baseCv);T.baseTex.anisotropy=T.aniso;
+  T.baseMat=new THREE.MeshLambertMaterial({map:T.baseTex});
+  buildBase();
+  T.ray=new THREE.Raycaster();T.tmp=new THREE.Vector3();
+  window.addEventListener('keydown',function(){});
+  return true;
+}
+function buildBase(){
+  if(T.base){T.scene.remove(T.base);T.base.geometry.dispose();}
+  var g=gridGeo(T.bx,T.by,T.bx+T.bs,T.by+T.bs,DEM?120:2,DEM?120:2,-10);g.computeVertexNormals();
+  T.base=new THREE.Mesh(g,T.baseMat);T.scene.add(T.base);
+}
+function baseRedraw(){drawGround3(T.baseCv.getContext('2d'),T.bx,T.by,T.bs,2048,true);T.baseTex.needsUpdate=true;}
+function tileGeo(ox,oy){var g=gridGeo(ox,oy,ox+TS,oy+TS,DEM?SEGT:1,DEM?SEGT:1,.5);g.computeVertexNormals();return g;}
+function mkTex(px,fn){var c=document.createElement('canvas');c.width=c.height=px;fn(c.getContext('2d'),px);var t=new THREE.CanvasTexture(c);t.anisotropy=T.aniso;t.minFilter=THREE.LinearMipmapLinearFilter;t.needsUpdate=true;return t;}
+function addGround(t){
+  var ox=TX0+(t%NX)*TS,oy=TY0+Math.floor(t/NX)*TS,px=T.px;
+  var tex=mkTex(px,function(c,p){drawGround3(c,ox,oy,TS,p,false);});
+  var m=new THREE.Mesh(tileGeo(ox,oy),new THREE.MeshLambertMaterial({map:tex,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1}));
+  T.scene.add(m);T.groundTiles[t]={mesh:m,tex:tex,ox:ox,oy:oy};
+}
+function redrawGround(){
+  baseRedraw();
+  Object.keys(T.groundTiles).forEach(function(k){var g=T.groundTiles[k],c=g.tex.image.getContext('2d');drawGround3(c,g.ox,g.oy,TS,g.tex.image.width,false);g.tex.needsUpdate=true;});
+  T.dirty=true;
+}
+
+/* ===== budovy: geometrie dlaždic ===== */
+function hcolor(h){var t=Math.pow(Math.min(h/40,1),.55),a=[236,238,243],b=[84,70,190];return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];}
+function buildTile(t){
+  if(!BD)return null;
+  var b0=BD.bS[t],b1=BD.bS[t+1];if(b1<=b0)return{mesh:null,b0:b0,b1:b1};
+  var ri=BD.rS[t],cp=BD.cS[t],ox=TX0+(t%NX)*TS,oy=TY0+Math.floor(t/NX)*TS,CO=BD.CO;
+  var pos=[],nor=[],col=[],vS=new Int32Array(b1-b0+1);
+  function pushV(x,y,z,nx,ny,nz,c){pos.push(x,y,-z);nor.push(nx,ny,-nz);col.push(c[0],c[1],c[2]);}
+  for(var b=b0;b<b1;b++){
+    vS[b-b0]=pos.length/3;
+    var h=BD.H[b]/2,c=hcolor(h).map(function(v){return v/255;}),rings=[],e0=1e9;
+    for(var r=0;r<BD.NR[b];r++){
+      var np=BD.NP[ri++],pts=[],x=CO[cp],y=CO[cp+1];pts.push([ox+x/10,oy+y/10]);
+      for(var k=1;k<np;k++){x+=CO[cp+2*k];y+=CO[cp+2*k+1];pts.push([ox+x/10,oy+y/10]);}
+      cp+=2*np;
+      var a=0;for(var i=0;i<np;i++){var p=pts[i],q2=pts[(i+1)%np];a+=p[0]*q2[1]-q2[0]*p[1];}
+      var wantCCW=(r===0);if((a>0)!==wantCCW)pts.reverse();
+      if(r===0&&DEM){for(i=0;i<np;i++){var ev=elevX(pts[i][0],pts[i][1]);if(ev<e0)e0=ev;}}
+      rings.push(pts);
+    }
+    if(!DEM)e0=0;
+    var yb=e0-(DEM?5:0),yt=e0+h;
+    var wc=[c[0]*.93,c[1]*.93,c[2]*.95];
+    for(r=0;r<rings.length;r++){var pts2=rings[r],n2=pts2.length;
+      for(i=0;i<n2;i++){var A=pts2[i],B=pts2[(i+1)%n2],dx=B[0]-A[0],dy=B[1]-A[1],len=Math.hypot(dx,dy)||1,nx=dy/len,ny=-dx/len;
+        pushV(A[0],yb,A[1],nx,0,ny,wc);pushV(B[0],yb,B[1],nx,0,ny,wc);pushV(B[0],yt,B[1],nx,0,ny,wc);
+        pushV(A[0],yb,A[1],nx,0,ny,wc);pushV(B[0],yt,B[1],nx,0,ny,wc);pushV(A[0],yt,A[1],nx,0,ny,wc);}}
+    var tris=[],flat=[];
+    if(rings.length===1&&rings[0].length===3){flat=rings[0];tris=[[0,1,2]];}
+    else if(rings.length===1&&rings[0].length===4){flat=rings[0];tris=[[0,1,2],[0,2,3]];}
+    else{
+      var cont=rings[0].map(function(p){return new THREE.Vector2(p[0],p[1]);}),holes=rings.slice(1).map(function(rr){return rr.map(function(p){return new THREE.Vector2(p[0],p[1]);});});
+      try{tris=THREE.ShapeUtils.triangulateShape(cont,holes);}catch(e){tris=[];}
+      flat=rings[0].slice();rings.slice(1).forEach(function(rr){flat=flat.concat(rr);});
+    }
+    for(i=0;i<tris.length;i++){var Tr=tris[i],P0=flat[Tr[0]],P1=flat[Tr[1]],P2=flat[Tr[2]];if(!P0||!P1||!P2)continue;
+      var cr=(P1[0]-P0[0])*(P2[1]-P0[1])-(P1[1]-P0[1])*(P2[0]-P0[0]);if(cr<0){var tmp=P1;P1=P2;P2=tmp;}
+      pushV(P0[0],yt,P0[1],0,1,0,c);pushV(P1[0],yt,P1[1],0,1,0,c);pushV(P2[0],yt,P2[1],0,1,0,c);}
+  }
+  vS[b1-b0]=pos.length/3;
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));
+  g.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(nor),3));
+  g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(col),3));
+  g.computeBoundingSphere();
+  var m=new THREE.Mesh(g,layers.hcol?T.matCol:T.matWhite);m.visible=layers.bld;T.scene.add(m);
+  return{mesh:m,b0:b0,b1:b1,vS:vS};
+}
+function disposeTile(t){
+  var g=T.groundTiles[t];if(g){T.scene.remove(g.mesh);g.tex.dispose();g.mesh.material.dispose();g.mesh.geometry.dispose();delete T.groundTiles[t];}
+  disposeB(t);
+}
+function disposeB(t){var b=T.bTiles[t];if(b){if(b.mesh){T.scene.remove(b.mesh);b.mesh.geometry.dispose();}delete T.bTiles[t];}}
+
+/* ===== správa dlaždic podle kamery ===== */
+function tileCenter(t){return[TX0+(t%NX)*TS+TS/2,TY0+Math.floor(t/NX)*TS+TS/2];}
+function updateTiles(){
+  var tg=T.ctl.target,dist=T.cam.position.distanceTo(tg),tx=tg.x,ty=-tg.z;
+  T.cam.near=clamp(dist*.01,4,200);T.cam.far=Math.max(60000,dist*4);T.cam.updateProjectionMatrix();
+  var Rb=dist<10000?clamp(dist*2,1400,5200):0,Rg=dist<24000?clamp(dist*1.7,1700,5200):0;
+  T.scene.fog.near=Math.max(dist*1.3,Rb*.55,1500);T.scene.fog.far=Math.max(dist*3.2,Rb*1.25,5000);
+  var want=[],t;
+  for(t=0;t<NX*NY;t++){var c=tileCenter(t),d=Math.hypot(c[0]-tx,c[1]-ty),inb=Rb&&d<Rb,ing=Rg&&d<Rg;if(ing||inb)want.push([d,t,inb,ing]);}
+  want.sort(function(a,b){return a[0]-b[0];});
+  var keep={};T.queue=[];
+  want.forEach(function(w){keep[w[1]]=1;if(w[3]&&!T.groundTiles[w[1]])T.queue.push(['g',w[1]]);if(w[2]&&BD&&!T.bTiles[w[1]])T.queue.push(['b',w[1]]);});
+  Object.keys(T.groundTiles).concat(Object.keys(T.bTiles)).forEach(function(k){
+    var c2=tileCenter(+k),d2=Math.hypot(c2[0]-tx,c2[1]-ty);
+    if(!keep[k]&&d2>Math.max(Rg,Rb)*1.25+TS)disposeTile(+k);
+    else if(T.bTiles[k]&&(!Rb||d2>Rb*1.3+TS))disposeB(+k);
+  });
+  if(!T.pumping)pump();
+}
+function pump(){
+  if(!T.queue.length){T.pumping=false;if(BD)busyEl.hidden=true;return;}
+  T.pumping=true;var it=T.queue.shift();
+  if(it[0]==='g'){if(!T.groundTiles[it[1]])addGround(it[1]);}
+  else if(!T.bTiles[it[1]]&&BD){busyEl.hidden=false;busyEl.textContent='Načítám budovy…';T.bTiles[it[1]]=buildTile(it[1])||{mesh:null,b0:0,b1:0};}
+  T.dirty=true;setTimeout(pump,it[0]==='g'?4:12);
+}
+
+/* ===== překryvy: dostupnost, docházkové zóny, značky ===== */
+function setPlane(key,canvas,x0,y0,x1,y1,nx,ny,lift,order){
+  var o=T[key];if(o){T.scene.remove(o);o.geometry.dispose();o.material.map.dispose();o.material.dispose();T[key]=null;}
+  if(!canvas)return;
+  var tex=new THREE.CanvasTexture(canvas);tex.anisotropy=T.aniso;tex.needsUpdate=true;
+  var m=new THREE.Mesh(gridGeo(x0,y0,x1,y1,nx,ny,lift),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}));
+  m.material.opacity=key==='isoP'?.72:.85;m.renderOrder=order;T.scene.add(m);T[key]=m;
+}
+function ribbon(arrs,w,lift,color,order){
+  var pos=[],idx=[];
+  arrs.forEach(function(a){var n=a.length/2;if(n<2)return;var base=pos.length/3,i;
+    for(i=0;i<n;i++){var x=a[2*i],y=a[2*i+1],i0=Math.max(i-1,0),i1=Math.min(i+1,n-1),dx=a[2*i1]-a[2*i0],dy=a[2*i1+1]-a[2*i0+1],l=Math.hypot(dx,dy)||1,ox=-dy/l*w/2,oy=dx/l*w/2,z=elevX(x,y)+lift;pos.push(x+ox,z,-(y+oy),x-ox,z,-(y-oy));}
+    for(i=0;i<n-1;i++){var b=base+2*i;idx.push(b,b+1,b+2,b+1,b+3,b+2);}});
+  var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(pos),3));g.setIndex(idx);
+  var m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:color,side:THREE.DoubleSide,fog:false,depthTest:true,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}));m.renderOrder=order;return m;
+}
+function clearMarks(){
+  ['hl1','hl2','pinM','selM'].forEach(function(k){var o=T[k];if(!o)return;T.scene.remove(o);o.traverse&&o.traverse(function(n){if(n.geometry)n.geometry.dispose();});T[k]=null;});
+}
+function buildMarks(){
+  clearMarks();
+  var hl=selLine!=null?[selLine]:(sel!=null?NODES[sel].lines:[]);
+  if(hl.length){var arrs=[];hl.forEach(function(i){LINES[i].s.forEach(function(a){arrs.push(a);});});
+    T.hl1=ribbon(arrs,22,7,0xffffff,6);T.hl2=ribbon(arrs,12,8,0x3d3bf3,7);T.scene.add(T.hl1,T.hl2);}
+  if(sel!=null){var n=NODES[sel],g=new THREE.RingGeometry(16,24,32);g.rotateX(-Math.PI/2);var m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x3d3bf3,side:THREE.DoubleSide,fog:false}));m.position.set(n.x,elevX(n.x,n.y)+9,-n.y);m.renderOrder=8;T.scene.add(m);T.selM=m;}
+  if(pin){
+    var gr=new THREE.Group(),mat=new THREE.MeshBasicMaterial({color:0x3d3bf3,fog:false}),cyl=new THREE.Mesh(new THREE.CylinderGeometry(4,4,160,16),mat),sp=new THREE.Mesh(new THREE.SphereGeometry(18,16,12),mat);
+    cyl.position.y=80;sp.position.y=170;gr.add(cyl,sp);gr.position.set(pin.x,elevX(pin.x,pin.y),-pin.y);T.scene.add(gr);T.pinM=gr;
+  }
+}
+function groundSig(){return ['metro','tram','bus','rail','ferry','night','stops','water','roads','green'].map(function(k){return layers[k]?1:0;}).join('')+(heat&&POIC[heat]?heat:layers.poi?'all':'');}
+function sync3d(){
+  if(!T)return;
+  if(T.heatKey!==heat){T.heatKey=heat;if(heat)setPlane('heatP',heatCanvas(heat),G.x0,G.y0,G.x0+G.w*G.cell,G.y0+G.h*G.cell,G.w,G.h,3,3);else setPlane('heatP',null);}
+  var ik=(iso&&iso.canvas&&layers.iso)?iso:null;
+  if(T.isoRef!==ik){T.isoRef=ik;if(ik)setPlane('isoP',ik.canvas,ik.x0,ik.y0,ik.x1,ik.y1,Math.min(200,Math.ceil((ik.x1-ik.x0)/60)),Math.min(200,Math.ceil((ik.y1-ik.y0)/60)),4.5,4);else setPlane('isoP',null);}
+  var ms=sel+'|'+selLine+'|'+(pin?pin.x+','+pin.y:'');
+  if(T.markSig!==ms){T.markSig=ms;buildMarks();}
+  var gs=groundSig();
+  if(T.gsig!==gs){var first=T.gsig===undefined;T.gsig=gs;if(!first){clearTimeout(T.gt);T.gt=setTimeout(redrawGround,50);}}
+  var bs=layers.bld+'|'+layers.hcol;
+  if(T.bsig!==bs){T.bsig=bs;Object.keys(T.bTiles).forEach(function(t){var b=T.bTiles[t];if(b.mesh){b.mesh.visible=layers.bld;b.mesh.material=layers.hcol?T.matCol:T.matWhite;}});}
+  T.dirty=true;
+}
+
+/* ===== kamera ===== */
+function camState(){var tg=T.ctl.target,d=T.cam.position.clone().sub(tg),dist=d.length();return{tx:tg.x,tz:tg.z,az:Math.atan2(d.x,d.z),pol:Math.acos(clamp(d.y/dist,-1,1)),dist:dist};}
+function applyState(s){var y0=elevX(s.tx,-s.tz);T.ctl.target.set(s.tx,y0,s.tz);T.cam.position.set(s.tx+s.dist*Math.sin(s.pol)*Math.sin(s.az),y0+s.dist*Math.cos(s.pol),s.tz+s.dist*Math.sin(s.pol)*Math.cos(s.az));T.cam.lookAt(T.ctl.target);T.ctl.update();}
+function fly3(to,ms){
+  var from=camState();to=Object.assign({},from,to);
+  var da=to.az-from.az;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;to.az=from.az+da;
+  T.anim={from:from,to:to,t0:performance.now(),ms:ms||700};T.dirty=true;
+}
+function stepAnim(now){
+  var an=T.anim;if(!an)return false;var u=clamp((now-an.t0)/an.ms,0,1),e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,f=an.from,t=an.to;
+  applyState({tx:f.tx+(t.tx-f.tx)*e,tz:f.tz+(t.tz-f.tz)*e,az:f.az+(t.az-f.az)*e,pol:f.pol+(t.pol-f.pol)*e,dist:f.dist*Math.pow(t.dist/f.dist,e)});
+  if(u>=1)T.anim=null;return true;
+}
+
+/* ===== popisky zastávek ===== */
+var labPool=[];
+function updateLabels(){
+  var used=0,w=glc.clientWidth,h=glc.clientHeight,tg=T.ctl.target,dist=T.cam.position.distanceTo(tg),tx=tg.x,ty=-tg.z,placed=[],tmp=T.tmp;
+  function show(n,pri){
+    if(!layers.labels||used>=60||!nodeVisible(n))return;
+    var d=Math.hypot(n.x-tx,n.y-ty);if(d>Math.max(900,Math.min(dist*1.8,5000))&&!pri)return;
+    tmp.set(n.x,elevX(n.x,n.y)+6,-n.y).project(T.cam);if(tmp.z>1||tmp.x<-1.05||tmp.x>1.05||tmp.y<-1.05||tmp.y>1.05)return;
+    var sx2=(tmp.x*.5+.5)*w,sy2=(-tmp.y*.5+.5)*h;
+    for(var k=0;k<placed.length;k++){if(Math.abs(placed[k][0]-sx2)<(pri?70:80)&&Math.abs(placed[k][1]-sy2)<15)return;}
+    placed.push([sx2,sy2]);
+    var el=labPool[used];if(!el){el=document.createElement('span');labEl.appendChild(el);labPool[used]=el;}
+    el.textContent=n.name;el.style.left=sx2+'px';el.style.top=sy2+'px';el.style.display='block';el.style.fontWeight=pri?'800':'700';el.style.fontSize=pri?'13px':'12px';used++;
+  }
+  if(sel!=null)show(NODES[sel],true);
+  NODES.forEach(function(n){if(n.mask&4&&dist<26000)show(n,true);});
+  if(dist<2600)NODES.forEach(function(n){if(n.mask&2&&!(n.mask&4))show(n,false);});
+  if(dist<1400)NODES.forEach(function(n){if(n.mask===1)show(n,false);});
+  for(var k2=used;k2<labPool.length;k2++)labPool[k2].style.display='none';
+}
+
+/* ===== budovy: statistika okolí a karty ===== */
+function nearStats(px,py,R){
+  var n=0,sum=0,tall=0,mx=0,t0=Math.floor((px-R-TX0)/TS),t1=Math.floor((px+R-TX0)/TS),u0=Math.floor((py-R-TY0)/TS),u1=Math.floor((py+R-TY0)/TS);
+  if(!BD)return null;
+  for(var u=u0;u<=u1;u++)for(var tx=t0;tx<=t1;tx++){
+    if(tx<0||u<0||tx>=NX||u>=NY)continue;var t=u*NX+tx,ox=TX0+tx*TS,oy=TY0+u*TS,ri=BD.rS[t],cp=BD.cS[t];
+    for(var b=BD.bS[t];b<BD.bS[t+1];b++){
+      var x=ox+BD.CO[cp]/10,y=oy+BD.CO[cp+1]/10;
+      if(Math.hypot(x-px,y-py)<R){var h=BD.H[b]/2;n++;sum+=h;if(h>=25)tall++;if(h>mx)mx=h;}
+      for(var r=0;r<BD.NR[b];r++){cp+=2*BD.NP[ri];ri++;}
+    }
+  }
+  return{n:n,avg:n?sum/n:0,tall:tall,mx:mx};
+}
+function f1(v){return v.toFixed(1).replace('.',',');}
+function bldHTML(){
+  if(mode!=='3d'||!BD)return '';
+  var s='';
+  if(bsel){
+    var h=BD.H[bsel.b]/2,f=BD.FL[bsel.b],src=f===2?'výška z OSM':f===1?'z počtu pater v OSM':'odhad podle typu stavby';
+    s+='<section class="card"><p class="ov">Vybraná budova</p><div style="font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1">'+(h%1?f1(h):h)+' m</div><p class="cap" style="margin-top:6px">přibližně '+Math.max(1,Math.round(h/3))+' pater, '+src+'</p></section>';
+  }
+  if(pin){var bs=nearStats(pin.x,pin.y,300);if(bs)s+='<section class="card"><p class="ov">Zástavba do 300 m</p><div class="tbl"><table><tbody><tr><td>Budov</td><td class="r">'+bs.n+'</td></tr><tr><td>Průměrná výška</td><td class="r">'+f1(bs.avg)+' m</td></tr><tr><td>Budov nad 25 m</td><td class="r">'+bs.tall+'</td></tr><tr><td>Nejvyšší budova</td><td class="r">'+bs.mx.toFixed(0)+' m</td></tr></tbody></table></div></section>';}
+  return s;
+}
+function bldStatsHTML(){
+  if(mode!=='3d')return '';
+  var HC=['<6 m','6 až 12 m','12 až 25 m','25 až 40 m','nad 40 m'],HD=['1 až 2 patra','3 až 4 patra','5 až 8 pater','9 až 13 pater','věžové domy'],HV=[3,9,18,32,60];
+  var tot=BLD.hist.reduce(function(a,b){return a+b;},0),mx=Math.max.apply(null,BLD.hist);
+  var s='<section class="card"><h2>Zástavba Prahy</h2><p class="cap" style="margin-bottom:10px">Podle výšky budov, barva odpovídá vykreslení. Počítáno z '+tot.toLocaleString('cs-CZ')+' budov uvnitř hranic Prahy.</p><div class="tbl"><table><thead><tr><th>Výška</th><th class="r">Budov</th><th class="r">Podíl</th><th></th></tr></thead><tbody>';
+  for(var i=0;i<5;i++){var c=hcolor(HV[i]);s+='<tr><td><span class="dot" style="background:rgb('+c.map(Math.round).join(',')+');border:1px solid rgba(16,24,40,.15)"></span>'+HC[i]+'<div class="cap">'+HD[i]+'</div></td><td class="r">'+BLD.hist[i].toLocaleString('cs-CZ')+'</td><td class="r">'+(100*BLD.hist[i]/tot).toFixed(1).replace('.',',')+' %</td><td style="min-width:60px"><div class="hb"><b style="width:'+(100*BLD.hist[i]/mx).toFixed(0)+'%;background:#8b95a7"></b></div></td></tr>';}
+  return s+'</tbody></table></div><p class="cap" style="margin-top:8px">Výška je známá u '+(100*BLD.known/BLD.n).toFixed(0)+' % budov, zbytek je odhad.'+(DEM?' Terén: Copernicus DEM 90 m, převýšení ×'+EX+'.':' Terén je zatím plochý.')+'</p></section>';
+}
+function setHighlight(s,on){
+  if(!s||!T)return;var tl=T.bTiles[s.t];if(!tl||!tl.mesh)return;
+  var col=tl.mesh.geometry.attributes.color,a=tl.vS[s.b-tl.b0],b=tl.vS[s.b-tl.b0+1];
+  for(var i=a;i<b;i++){if(on)col.setXYZ(i,.24,.23,.95);else{var c=hcolor(BD.H[s.b]/2);col.setXYZ(i,c[0]/255,c[1]/255,c[2]/255);}}
+  col.needsUpdate=true;
+}
+function setBsel(s){if(bsel)setHighlight(bsel,false);bsel=s;if(bsel)setHighlight(bsel,true);}
+
+/* ===== kliknutí ve 3D ===== */
+function pickStop(mx,my){
+  var w=glc.clientWidth,h=glc.clientHeight,dist=T.cam.position.distanceTo(T.ctl.target),thr=dist>12000?6:14,best=-1,bd=thr*thr,tmp=T.tmp;
+  NODES.forEach(function(n,i){
+    if(!layers.stops&&!(n.mask&4))return;if(!nodeVisible(n))return;if(n.mask===1&&dist>2500)return;
+    tmp.set(n.x,elevX(n.x,n.y)+4,-n.y).project(T.cam);if(tmp.z>1)return;
+    var dx=(tmp.x*.5+.5)*w-mx,dy=(-tmp.y*.5+.5)*h-my,d=dx*dx+dy*dy;if(n.mask&4)d*=.6;if(d<bd){bd=d;best=i;}
+  });
+  return best;
+}
+var downAt=null;
+glc.addEventListener('pointerdown',function(e){downAt={x:e.clientX,y:e.clientY};});
+glc.addEventListener('pointerup',function(e){
+  if(!downAt||!T||Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y)>6)return;downAt=null;
+  var r=glc.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  var si=pickStop(mx,my);
+  if(si>=0){setBsel(null);select(si);document.getElementById('panel').scrollTop=0;return;}
+  T.ray.setFromCamera(new THREE.Vector2(mx/r.width*2-1,-(my/r.height)*2+1),T.cam);
+  var ms=[],keys=[];if(layers.bld)Object.keys(T.bTiles).forEach(function(t){if(T.bTiles[t].mesh){ms.push(T.bTiles[t].mesh);keys.push(+t);}});
+  var hit=ms.length?T.ray.intersectObjects(ms,false)[0]:null,gp=null;
+  if(hit){
+    var t=keys[ms.indexOf(hit.object)],tl=T.bTiles[t],vi=hit.face.a,lo=0,hi=tl.b1-tl.b0;
+    while(lo<hi-1){var mid=(lo+hi)>>1;if(tl.vS[mid]<=vi)lo=mid;else hi=mid;}
+    placeAt(hit.point.x,-hit.point.z);setBsel({t:t,b:tl.b0+lo});renderPanel();document.getElementById('panel').scrollTop=0;return;
+  }
+  var gm=[T.base];Object.keys(T.groundTiles).forEach(function(k){gm.push(T.groundTiles[k].mesh);});
+  var gh=T.ray.intersectObjects(gm,false)[0];
+  if(gh){setBsel(null);placeAt(gh.point.x,-gh.point.z);document.getElementById('panel').scrollTop=0;}
+});
+glc.addEventListener('keydown',function(e){
+  if(!T)return;var s=camState(),st=s.dist*.12,k=e.key,dx=0,dz=0;
+  if(k==='ArrowLeft')dx=-1;else if(k==='ArrowRight')dx=1;else if(k==='ArrowUp')dz=-1;else if(k==='ArrowDown')dz=1;
+  else if(k==='+'||k==='='){fly3({dist:s.dist/1.4},250);e.preventDefault();return;}else if(k==='-'){fly3({dist:s.dist*1.4},250);e.preventDefault();return;}else return;
+  e.preventDefault();var ca=Math.cos(s.az),sa=Math.sin(s.az);
+  fly3({tx:s.tx+(dx*ca+dz*sa)*st,tz:s.tz+(-dx*sa+dz*ca)*st},200);
+});
+
+/* ===== smyčka a přepínání režimů ===== */
+function resize3(){if(!T)return;var r=glc.parentElement.getBoundingClientRect();T.r.setSize(r.width,r.height,false);T.cam.aspect=r.width/Math.max(r.height,1);T.cam.updateProjectionMatrix();T.dirty=true;}
+function frame(now){
+  if(mode!=='3d'){T.on=false;return;}
+  requestAnimationFrame(frame);
+  var moving=stepAnim(now),ch=T.ctl.update();
+  if(moving||ch||T.dirty){
+    var c=T.cam.position,tg=T.ctl.target,k=c.x.toFixed(0)+'|'+c.z.toFixed(0)+'|'+tg.x.toFixed(0)+'|'+tg.z.toFixed(0)+'|'+c.y.toFixed(0);
+    if(k!==T.key&&now-T.lastUpd>250){T.key=k;T.lastUpd=now;updateTiles();}
+    T.r.render(T.scene,T.cam);updateLabels();T.dirty=false;
+  }
+}
+function setEX(v){
+  EX=v;if(!T)return;
+  Object.keys(T.groundTiles).forEach(function(k){disposeTile(+k);});Object.keys(T.bTiles).forEach(function(k){disposeB(+k);});
+  bsel=null;buildBase();T.heatKey='#';T.isoRef='#';T.markSig='#';sync3d();updateTiles();renderPanel();T.dirty=true;
+}
+function setMode(m){
+  if(m===mode)return;
+  var bd=document.body;
+  if(m==='3d'){
+    if(!init3d()){alert3('Tento prohlížeč neumí 3D zobrazení.');return;}
+    mode='3d';bd.classList.add('m3d');cv.style.display='none';glc.style.display='block';labEl.hidden=false;
+    T.px=640;resize3();
+    var dist=clamp(H/V.s*1.15,300,42000);
+    applyState({tx:V.cx,tz:-V.cy,az:0,pol:dist>9000?.8:1.0,dist:dist});
+    if(!BD)loadBuildings();
+    baseRedraw();T.heatKey='#';T.isoRef='#';T.markSig='#';T.bsig=undefined;sync3d();updateTiles();
+    if(!T.on){T.on=true;requestAnimationFrame(frame);}
+  }else{
+    var s=camState();mode='2d';bd.classList.remove('m3d');glc.style.display='none';cv.style.display='block';labEl.hidden=true;
+    V.cx=s.tx;V.cy=-s.tz;V.s=clamp(H/(s.dist*.95),FIT*.6,3);setBsel(null);
+  }
+  renderLayers();renderPanel();resize();
+}
+function alert3(t){var b=document.getElementById('busy');b.hidden=false;b.textContent=t;setTimeout(function(){b.hidden=true;},3500);}
+
+document.getElementById('m2').addEventListener('click',function(){setMode('2d');document.getElementById('m2').setAttribute('aria-pressed','true');document.getElementById('m3').setAttribute('aria-pressed','false');});
+document.getElementById('m3').addEventListener('click',function(){setMode('3d');var on=mode==='3d';document.getElementById('m2').setAttribute('aria-pressed',String(!on));document.getElementById('m3').setAttribute('aria-pressed',String(on));});
+document.getElementById('zin').onclick=function(){if(mode==='3d')fly3({dist:camState().dist/1.6},350);else{zoomAt(W/2,H/2,1.5);draw();}};
+document.getElementById('zout').onclick=function(){if(mode==='3d')fly3({dist:Math.min(camState().dist*1.6,44000)},350);else{zoomAt(W/2,H/2,1/1.5);draw();}};
+document.getElementById('zfit').onclick=function(){if(mode==='3d')fly3({tx:(BB.x0+BB.x1)/2,tz:-(BB.y0+BB.y1)/2,dist:34000,pol:.8,az:0},900);else{fit();draw();}};
+document.getElementById('b3t').onclick=function(){var s=camState();fly3({pol:s.pol>.6?.04:1.0},600);};
+document.getElementById('b3l').onclick=function(){fly3({az:camState().az+Math.PI/6},400);};
+document.getElementById('b3r').onclick=function(){fly3({az:camState().az-Math.PI/6},400);};
+document.getElementById('b3n').onclick=function(){fly3({az:0},500);};
+renderLayers();renderPanel();loadGraph();
+window.addEventListener('resize',resize);
+if(window.ResizeObserver)new ResizeObserver(function(){resize();}).observe(cv.parentElement);
+resize();
+})();
+</script>
