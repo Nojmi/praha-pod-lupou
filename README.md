@@ -4,11 +4,11 @@ Interaktivní mapa kvality bydlení v Praze: MHD (trasy a zastávky z PID), dost
 (školky, školy, obchody, lékaři, zeleň), docházkové zóny 5/10/15/30 min po skutečných cestách,
 přepínač 2D/3D s budovami (výšky z OSM) a terénem (Copernicus DEM).
 
-Aplikace je jedna samostatná HTML stránka (`docs/index.html`, asi 10 MB), všechna data jsou vložená uvnitř.
+Aplikace je jedna samostatná HTML stránka (`index.html`, asi 10 MB), všechna data jsou vložená uvnitř.
 
 ## Rychlý start
-    python3 build_app.py      # složí docs/index.html z src/template.html a data/data7.json
-    # pak otevři docs/index.html v prohlížeči (3D potřebuje internet kvůli three.js z CDN)
+    python3 build_app.py      # složí index.html z src/template.html a data/data7.json
+    # pak otevři index.html v prohlížeči (3D potřebuje internet kvůli three.js z CDN)
 
 ## Struktura
 - `src/template.html` – celá aplikace (2D canvas + 3D three.js), místo dat je `/*DATA*/`
