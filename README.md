@@ -2,7 +2,7 @@
 
 Interaktivní mapa kvality bydlení v Praze: MHD (trasy a zastávky z PID), dostupnost a vybavenost
 (školky, školy, obchody, lékaři, zeleň), docházkové zóny 5/10/15/30 min po skutečných cestách,
-přepínač 2D/3D s budovami (výšky z OSM) a terénem (Copernicus DEM).
+skóre místa s profily a váhami (rodina, senior, dojíždějící, vlastní), přepínač 2D/3D s budovami (výšky z OSM) a terénem (Copernicus DEM).
 
 Aplikace je jedna samostatná HTML stránka (`index.html`, asi 10 MB), všechna data jsou vložená uvnitř.
 
